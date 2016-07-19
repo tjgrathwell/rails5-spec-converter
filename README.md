@@ -12,7 +12,7 @@ expect(response).to be_success
 Rails 5 will issue a hearty deprecation warning, persuading you to write this instead:
 
 ```
-get :users, params: {search: 'bayleef'}, format: :json
+get :users, params: { search: 'bayleef' }, format: :json
 expect(response).to be_success
 ```
 
@@ -26,8 +26,12 @@ Install the gem standalone like so:
 
 ## Usage
 
+Make sure you've committed everything to Git first, then
+
     $ cd some-project
     $ rails5-spec-converter
+
+This will update all the files in that directory matching the glob `spec/**/*_spec.rb`. It should be idempotent.
 
 ## Development
 

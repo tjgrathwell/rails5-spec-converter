@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift(File.expand_path('../lib', __FILE__))
+require 'rails5/spec_converter/cli'
+
+result = Rails5::SpecConverter::CLI.new.run
+exit(result ? 0 : 1)

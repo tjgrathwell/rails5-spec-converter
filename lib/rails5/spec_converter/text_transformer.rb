@@ -25,7 +25,7 @@ module Rails5
         root_node.each_node(:send) do |node|
           target, verb, action, first_argument = node.children
           if target.nil? && HTTP_VERBS.include?(verb)
-            if first_argument.hash_type?
+            if first_argument && first_argument.hash_type?
               hash_node = first_argument
 
               pairs_that_belong_in_params = []
@@ -41,8 +41,10 @@ module Rails5
                 end
               end
 
+              curly_sep = hash_node.parent.loc.expression.source.match(/{\S/) ? '' : ' '
+
               if pairs_that_belong_in_params.length > 0
-                rewritten_hashes = ["params: { #{restring_hash(pairs_that_belong_in_params)} }"]
+                rewritten_hashes = ["params: {#{curly_sep}#{restring_hash(pairs_that_belong_in_params)}#{curly_sep}}"]
                 if pairs_that_belong_outside_params.length > 0
                   rewritten_hashes << restring_hash(pairs_that_belong_outside_params)
                 end
