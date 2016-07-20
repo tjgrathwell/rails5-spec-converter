@@ -75,6 +75,30 @@ describe Rails5::SpecConverter::TextTransformer do
     EOT
   end
 
+  it 'assigns additional arguments as "headers"' do
+    result = described_class.new(<<-EOT.strip_heredoc).transform
+      it 'executes the controller action' do
+        get :index, {search: 'bayleef'}, {'X-PANCAKE' => 'banana'}
+      end
+    EOT
+
+    expect(result).to eq(<<-EOT.strip_heredoc)
+      it 'executes the controller action' do
+        get :index, params: {search: 'bayleef'}, headers: {'X-PANCAKE' => 'banana'}
+      end
+    EOT
+  end
+
+  it 'wraps header args in curly braces if they are not already present' do
+    result = described_class.new(<<-EOT.strip_heredoc).transform
+      get :show, nil, 'X-BANANA' => 'pancake'
+    EOT
+
+    expect(result).to eq(<<-EOT.strip_heredoc)
+      get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
+    EOT
+  end
+
   it 'keeps hashes tightly packed if the existing source has any tightly-packed hashes in it' do
     result = described_class.new(<<-EOT.strip_heredoc).transform
       it 'executes the controller action' do
