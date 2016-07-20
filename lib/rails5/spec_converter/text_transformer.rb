@@ -23,36 +23,51 @@ module Rails5
 
         root_node = parser.parse(source_buffer)
         root_node.each_node(:send) do |node|
-          target, verb, action, first_argument = node.children
-          if target.nil? && HTTP_VERBS.include?(verb)
-            if first_argument && first_argument.hash_type?
-              hash_node = first_argument
+          target, verb, action, *args = node.children
+          next unless args.length > 0
+          next unless target.nil? && HTTP_VERBS.include?(verb)
 
-              pairs_that_belong_in_params = []
-              pairs_that_belong_outside_params = []
+          first_argument = args.first
+          if args.length == 1 && !first_argument.hash_type?
+            source_rewriter.replace(
+              first_argument.loc.expression,
+              "params: #{first_argument.loc.expression.source}"
+            )
+            next
+          end
 
-              hash_node.children.each do |pair|
-                key = pair.children[0].children[0]
+          if first_argument.hash_type?
+            hash_node = first_argument
 
-                if ALLOWED_KWARG_KEYS.include?(key)
-                  pairs_that_belong_outside_params << pair
-                else
-                  pairs_that_belong_in_params << pair
-                end
+            pairs_that_belong_in_params = []
+            pairs_that_belong_outside_params = []
+
+            hash_node.children.each do |pair|
+              key = pair.children[0].children[0]
+
+              if ALLOWED_KWARG_KEYS.include?(key)
+                pairs_that_belong_outside_params << pair
+              else
+                pairs_that_belong_in_params << pair
               end
+            end
 
-              curly_sep = hash_node.parent.loc.expression.source.match(/{\S/) ? '' : ' '
+            if pairs_that_belong_in_params.length == 0 && pairs_that_belong_outside_params.length == 0
+              source_rewriter.replace(hash_node.loc.expression, 'params: {}')
+              next
+            end
 
-              if pairs_that_belong_in_params.length > 0
-                rewritten_hashes = ["params: {#{curly_sep}#{restring_hash(pairs_that_belong_in_params)}#{curly_sep}}"]
-                if pairs_that_belong_outside_params.length > 0
-                  rewritten_hashes << restring_hash(pairs_that_belong_outside_params)
-                end
-                source_rewriter.replace(
-                  hash_node.loc.expression,
-                  rewritten_hashes.join(', ')
-                )
+            curly_sep = hash_node.parent.loc.expression.source.match(/{\S/) ? '' : ' '
+
+            if pairs_that_belong_in_params.length > 0
+              rewritten_hashes = ["params: {#{curly_sep}#{restring_hash(pairs_that_belong_in_params)}#{curly_sep}}"]
+              if pairs_that_belong_outside_params.length > 0
+                rewritten_hashes << restring_hash(pairs_that_belong_outside_params)
               end
+              source_rewriter.replace(
+                hash_node.loc.expression,
+                rewritten_hashes.join(', ')
+              )
             end
           end
         end
