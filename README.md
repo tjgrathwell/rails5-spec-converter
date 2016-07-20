@@ -33,6 +33,36 @@ Make sure you've committed everything to Git first, then
 
 This will update all the files in that directory matching the glob `spec/**/*_spec.rb`. It should be idempotent.
 
+If you want to specify a specific set of files instead, you can run `rails5-spec-converter path_to_my_files`.
+
+By default it will make some noise, run with `rails5-spec-converter --quiet` if you want it not to.
+
+### Whitespace
+
+The tool will attempt to indent the newly-added "params" hash in situations when the arguments are on newlines, e.g.:
+
+```
+  get :index
+      search: 'bayleef',
+      format: :json
+```
+
+becomes
+
+```
+  get :index
+      params: {
+        search: 'bayleef'
+      },
+      format: :json
+```
+
+Since the extra spaces in front of 'params' are brand-new whitespace, you may want to configure them (default is 2 spaces).
+
+`rails5-spec-converter --indent '    '`
+
+`rails5-spec-converter --indent '\t'`
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rspec spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

@@ -113,6 +113,42 @@ describe Rails5::SpecConverter::TextTransformer do
     EOT
   end
 
+  describe 'preserving whitespace' do
+    it 'indents hashes appropriately if they start on the same line as the action' do
+      result = described_class.new(<<-EOT.strip_heredoc).transform
+      post :show, branch_name: 'new_design3',
+                  ref: 'foo',
+                  format: :json
+      EOT
+
+      expect(result).to eq(<<-EOT.strip_heredoc)
+      post :show, params: {
+                    branch_name: 'new_design3',
+                    ref: 'foo'
+                  },
+                  format: :json
+      EOT
+    end
+
+    it 'indents hashes appropriately if they start on a new line' do
+      result = described_class.new(<<-EOT.strip_heredoc).transform
+      post :show,
+           branch_name: 'new_design3',
+           ref: 'foo',
+           format: :json
+      EOT
+
+      expect(result).to eq(<<-EOT.strip_heredoc)
+      post :show,
+           params: {
+             branch_name: 'new_design3',
+             ref: 'foo'
+           },
+           format: :json
+      EOT
+    end
+  end
+
   describe 'things that look like route definitions' do
     it 'leaves invocations that look like route definitions undisturbed' do
       test_content_stringy = <<-EOT
