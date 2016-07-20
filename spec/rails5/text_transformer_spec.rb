@@ -19,18 +19,6 @@ describe Rails5::SpecConverter::TextTransformer do
     expect(described_class.new(test_content).transform).to eq(test_content)
   end
 
-  it 'leaves invocations that look like route definitions undisturbed' do
-    test_content_stringy = <<-EOT
-      get 'profile', to: 'users#show'
-    EOT
-    expect(described_class.new(test_content_stringy).transform).to eq(test_content_stringy)
-
-    test_content_hashy = <<-EOT
-      get 'profile', to: :show, controller: 'users'
-    EOT
-    expect(described_class.new(test_content_hashy).transform).to eq(test_content_hashy)
-  end
-
   it 'can add "params: {}" if an empty hash of arguments is present' do
     result = described_class.new(<<-EOT.strip_heredoc).transform
       it 'executes the controller action' do
@@ -123,5 +111,29 @@ describe Rails5::SpecConverter::TextTransformer do
         get :index, params: {search: 'bayleef'}, format: :json
       end
     EOT
+  end
+
+  describe 'things that look like route definitions' do
+    it 'leaves invocations that look like route definitions undisturbed' do
+      test_content_stringy = <<-EOT
+        get 'profile', to: 'users#show'
+      EOT
+      expect(described_class.new(test_content_stringy).transform).to eq(test_content_stringy)
+
+      test_content_hashy = <<-EOT
+        get 'profile', to: :show, controller: 'users'
+      EOT
+      expect(described_class.new(test_content_hashy).transform).to eq(test_content_hashy)
+    end
+
+    it 'adds "params" to invocations that have the key `to` but are not route definitions' do
+      result = described_class.new(<<-EOT.strip_heredoc).transform
+        get 'users', from: yesterday, to: today
+      EOT
+
+      expect(result).to eq(<<-EOT.strip_heredoc)
+        get 'users', params: { from: yesterday, to: today }
+      EOT
+    end
   end
 end

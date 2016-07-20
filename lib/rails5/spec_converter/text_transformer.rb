@@ -45,13 +45,16 @@ module Rails5
 
       def looks_like_route_definition?(hash_node)
         keys = hash_node.children.map { |pair| pair.children[0].children[0] }
-        return true if (keys & [:to, :controller]) == keys
+        route_definition_keys = [:to, :controller]
+        return true if route_definition_keys.all? { |k| keys.include?(k) }
 
         hash_node.children.each do |pair|
           key = pair.children[0].children[0]
-          value = pair.children[1].children[0]
           if key == :to
-            return true if value.match(/^\w+#\w+$/)
+            if pair.children[1].str_type?
+              value = pair.children[1].children[0]
+              return true if value.match(/^\w+#\w+$/)
+            end
           end
         end
 
