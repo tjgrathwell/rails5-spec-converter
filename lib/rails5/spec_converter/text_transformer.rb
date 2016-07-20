@@ -28,6 +28,8 @@ module Rails5
           next unless target.nil? && HTTP_VERBS.include?(verb)
 
           if args[0].hash_type? && args[0].children.length > 0
+            next if looks_like_route_definition?(args[0])
+
             write_params_hash(source_rewriter, args[0])
           else
             wrap_arg(source_rewriter, args[0], 'params')
@@ -40,6 +42,21 @@ module Rails5
       end
 
       private
+
+      def looks_like_route_definition?(hash_node)
+        keys = hash_node.children.map { |pair| pair.children[0].children[0] }
+        return true if (keys & [:to, :controller]) == keys
+
+        hash_node.children.each do |pair|
+          key = pair.children[0].children[0]
+          value = pair.children[1].children[0]
+          if key == :to
+            return true if value.match(/^\w+#\w+$/)
+          end
+        end
+
+        false
+      end
 
       def write_params_hash(source_rewriter, hash_node)
         pairs_that_belong_in_params = []
