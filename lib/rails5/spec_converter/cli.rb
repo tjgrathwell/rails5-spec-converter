@@ -1,4 +1,5 @@
 require 'rails5/spec_converter/text_transformer'
+require 'rails5/spec_converter/version'
 require 'optparse'
 
 module Rails5
@@ -8,6 +9,11 @@ module Rails5
         @options = {}
         OptionParser.new do |opts|
           opts.banner = "Usage: rails5-spec-converter [options] [files]"
+
+          opts.on("--version", "Print version number") do |q|
+            puts Rails5::SpecConverter::VERSION
+            exit
+          end
 
           opts.on("-q", "--quiet", "Run quietly") do |q|
             @options[:quiet] = q
