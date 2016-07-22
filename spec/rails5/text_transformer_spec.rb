@@ -154,7 +154,9 @@ describe Rails5::SpecConverter::TextTransformer do
       result = described_class.new(<<-RUBY.strip_heredoc).transform
         post :create, {
           color: 'blue',
-          style: 'striped'
+          size: {
+            width: 10
+          }
         }, {
           'header' => 'value'
         }
@@ -163,7 +165,9 @@ describe Rails5::SpecConverter::TextTransformer do
       expect(result).to eq(<<-RUBY.strip_heredoc)
         post :create, params: {
           color: 'blue',
-          style: 'striped'
+          size: {
+            width: 10
+          }
         }, headers: {
           'header' => 'value'
         }

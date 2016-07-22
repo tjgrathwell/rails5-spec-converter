@@ -105,7 +105,7 @@ module Rails5
       def indent_after_last_pair(hash_node)
         return nil unless hash_node.children.length > 0
 
-        text_after_last_pair = @content[hash_node.children.last.loc.expression.begin_pos...hash_node.loc.expression.end_pos]
+        text_after_last_pair = @content[hash_node.children.last.loc.expression.end_pos...hash_node.loc.expression.end_pos]
         extract_indent(text_after_last_pair)
       end
 
