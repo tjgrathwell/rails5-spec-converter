@@ -95,7 +95,23 @@ module Rails5
         end
       end
 
+      def indent_before_first_pair(hash_node)
+        return nil unless hash_node.children.length > 0
+
+        text_before_first_pair = @content[hash_node.loc.expression.begin_pos...hash_node.children.first.loc.expression.begin_pos]
+        extract_indent(text_before_first_pair)
+      end
+
+      def indent_after_last_pair(hash_node)
+        return nil unless hash_node.children.length > 0
+
+        text_after_last_pair = @content[hash_node.children.last.loc.expression.begin_pos...hash_node.loc.expression.end_pos]
+        extract_indent(text_after_last_pair)
+      end
+
       def additional_indent(hash_node)
+        return nil if indent_before_first_pair(hash_node)
+
         joiner = joiner_between_pairs(hash_node)
         joiner && joiner.include?("\n") ? @indent : nil
       end
@@ -103,12 +119,13 @@ module Rails5
       def existing_indent(hash_node)
         previous_sibling = hash_node.parent.children[hash_node.sibling_index - 1]
         text_before_hash = text_between_siblings(previous_sibling, hash_node)
-        whitespace_match = text_before_hash.match("\n(\s*)")
-        return whitespace_match[1] if whitespace_match
+        whitespace_indent = extract_indent(text_before_hash)
+        return whitespace_indent if whitespace_indent
+
+        return indent_before_first_pair(hash_node) if indent_before_first_pair(hash_node)
 
         joiner = joiner_between_pairs(hash_node)
-        pair_joiner_match = joiner.match("\n(\s*)") if joiner
-        return pair_joiner_match[1] if pair_joiner_match
+        extract_indent(joiner)
       end
 
       def has_space_after_curly?(hash_node)
@@ -133,11 +150,16 @@ module Rails5
       end
 
       def appropriately_spaced_params_hash(hash_node:, pairs:)
-        extra_indent = additional_indent(hash_node)
+        inner_indent = additional_indent(hash_node)
 
-        if extra_indent
-          base_indent = existing_indent(hash_node)
-          "{\n#{restring_hash(pairs, indent: base_indent + extra_indent, joiner: ",\n")}\n#{base_indent}}"
+        if inner_indent || indent_before_first_pair(hash_node)
+          outer_indent = existing_indent(hash_node)
+          restrung_hash = restring_hash(
+            pairs,
+            indent: outer_indent + (inner_indent || ''),
+            joiner: ",\n"
+          )
+          "{\n#{restrung_hash}\n#{indent_after_last_pair(hash_node) || outer_indent}}"
         else
           curly_sep = has_space_after_curly?(hash_node) ? '' : ' '
           "{#{curly_sep}#{restring_hash(pairs)}#{curly_sep}}"
@@ -147,7 +169,7 @@ module Rails5
       def wrap_arg(source_rewriter, node, key)
         node_loc = node.loc.expression
         node_source = node_loc.source
-        if node.hash_type? && !node_source.match(/^\s*\{.*\}$/)
+        if node.hash_type? && !node_source.match(/^\s*\{.*\}$/m)
           node_source = "{ #{node_source} }"
         end
         source_rewriter.replace(node_loc, "#{key}: #{node_source}")
@@ -155,6 +177,13 @@ module Rails5
 
       def restring_hash(pairs, joiner: ", ", indent: '')
         pairs.map { |pair| "#{indent}#{pair.loc.expression.source}" }.join(joiner)
+      end
+
+      def extract_indent(str)
+        return unless str
+
+        match = str.match("\n(\s*)")
+        match[1] if match
       end
 
       def log(str)

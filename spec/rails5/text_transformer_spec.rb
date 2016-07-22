@@ -2,174 +2,230 @@ require 'spec_helper'
 
 describe Rails5::SpecConverter::TextTransformer do
   it 'leaves invocations with no arguments undisturbed' do
-    test_content = <<-EOT
+    test_content = <<-RUBY
       it 'executes the controller action' do
         get :index
       end
-    EOT
+    RUBY
     expect(described_class.new(test_content).transform).to eq(test_content)
   end
 
   it 'leaves invocations with only permitted keys undisturbed' do
-    test_content = <<-EOT
+    test_content = <<-RUBY
       it 'executes the controller action' do
         get :index, format: :json
       end
-    EOT
+    RUBY
     expect(described_class.new(test_content).transform).to eq(test_content)
   end
 
   it 'can add "params: {}" if an empty hash of arguments is present' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do
         get :index, {}
       end
-    EOT
+    RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
+    expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, params: {}
       end
-    EOT
+    RUBY
   end
 
   it 'can add "params: {}" if the first argument is a method call' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do
         get :index, my_params
       end
-    EOT
+    RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
+    expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, params: my_params
       end
-    EOT
+    RUBY
   end
 
   it 'can add "params: {}" when only unpermitted keys are present' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do
         get :index, search: 'bayleef'
       end
-    EOT
+    RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
+    expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, params: { search: 'bayleef' }
       end
-    EOT
+    RUBY
   end
 
   it 'can add "params: {}" when both permitted and unpermitted keys are present' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do
         get :index, search: 'bayleef', format: :json
       end
-    EOT
+    RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
+    expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, params: { search: 'bayleef' }, format: :json
       end
-    EOT
+    RUBY
   end
 
-  it 'assigns additional arguments as "headers"' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
-      it 'executes the controller action' do
+  describe 'header params' do
+    it 'assigns additional arguments as "headers"' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
         get :index, {search: 'bayleef'}, {'X-PANCAKE' => 'banana'}
-      end
-    EOT
+      RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
-      it 'executes the controller action' do
+      expect(result).to eq(<<-RUBY.strip_heredoc)
         get :index, params: {search: 'bayleef'}, headers: {'X-PANCAKE' => 'banana'}
-      end
-    EOT
-  end
+      RUBY
+    end
 
-  it 'wraps header args in curly braces if they are not already present' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
-      get :show, nil, 'X-BANANA' => 'pancake'
-    EOT
+    it 'adds "params" and "header" keys regardless of surrounding whitespace' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        get :index, {
+          search: 'bayleef'
+        }, {
+          'X-PANCAKE' => 'banana'
+        }
+      RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
-      get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
-    EOT
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        get :index, params: {
+          search: 'bayleef'
+        }, headers: {
+          'X-PANCAKE' => 'banana'
+        }
+      RUBY
+    end
+
+    it 'wraps header args in curly braces if they are not already present' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        get :show, nil, 'X-BANANA' => 'pancake'
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
+      RUBY
+    end
   end
 
   it 'keeps hashes tightly packed if the existing source has any tightly-packed hashes in it' do
-    result = described_class.new(<<-EOT.strip_heredoc).transform
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do
         get :index, {search: 'bayleef', format: :json}
       end
-    EOT
+    RUBY
 
-    expect(result).to eq(<<-EOT.strip_heredoc)
+    expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, params: {search: 'bayleef'}, format: :json
       end
-    EOT
+    RUBY
   end
 
   describe 'preserving whitespace' do
-    it 'indents hashes appropriately if they start on the same line as the action' do
-      result = described_class.new(<<-EOT.strip_heredoc).transform
-      post :show, branch_name: 'new_design3',
-                  ref: 'foo',
-                  format: :json
-      EOT
+    it 'preserves hash indentation if the hash starts on a new line' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        it 'executes the controller action' do
+          post :create, {
+            color: 'blue',
+            style: 'striped'
+          }
+        end
+      RUBY
 
-      expect(result).to eq(<<-EOT.strip_heredoc)
-      post :show, params: {
-                    branch_name: 'new_design3',
-                    ref: 'foo'
-                  },
-                  format: :json
-      EOT
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        it 'executes the controller action' do
+          post :create, params: {
+            color: 'blue',
+            style: 'striped'
+          }
+        end
+      RUBY
+    end
+
+    it 'preserves hash indentation if the hash starts on a new line and a headers hash is present' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        post :create, {
+          color: 'blue',
+          style: 'striped'
+        }, {
+          'header' => 'value'
+        }
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :create, params: {
+          color: 'blue',
+          style: 'striped'
+        }, headers: {
+          'header' => 'value'
+        }
+      RUBY
+    end
+
+    it 'indents hashes appropriately if they start on the same line as the action' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        post :show, branch_name: 'new_design3',
+                    ref: 'foo',
+                    format: :json
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :show, params: {
+                      branch_name: 'new_design3',
+                      ref: 'foo'
+                    },
+                    format: :json
+      RUBY
     end
 
     it 'indents hashes appropriately if they start on a new line' do
-      result = described_class.new(<<-EOT.strip_heredoc).transform
-      post :show,
-           branch_name: 'new_design3',
-           ref: 'foo',
-           format: :json
-      EOT
-
-      expect(result).to eq(<<-EOT.strip_heredoc)
-      post :show,
-           params: {
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        post :show,
              branch_name: 'new_design3',
-             ref: 'foo'
-           },
-           format: :json
-      EOT
+             ref: 'foo',
+             format: :json
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :show,
+             params: {
+               branch_name: 'new_design3',
+               ref: 'foo'
+             },
+             format: :json
+      RUBY
     end
   end
 
   describe 'things that look like route definitions' do
     it 'leaves invocations that look like route definitions undisturbed' do
-      test_content_stringy = <<-EOT
+      test_content_stringy = <<-RUBY
         get 'profile', to: 'users#show'
-      EOT
+      RUBY
       expect(described_class.new(test_content_stringy).transform).to eq(test_content_stringy)
 
-      test_content_hashy = <<-EOT
+      test_content_hashy = <<-RUBY
         get 'profile', to: :show, controller: 'users'
-      EOT
+      RUBY
       expect(described_class.new(test_content_hashy).transform).to eq(test_content_hashy)
     end
 
     it 'adds "params" to invocations that have the key `to` but are not route definitions' do
-      result = described_class.new(<<-EOT.strip_heredoc).transform
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
         get 'users', from: yesterday, to: today
-      EOT
+      RUBY
 
-      expect(result).to eq(<<-EOT.strip_heredoc)
+      expect(result).to eq(<<-RUBY.strip_heredoc)
         get 'users', params: { from: yesterday, to: today }
-      EOT
+      RUBY
     end
   end
 end
