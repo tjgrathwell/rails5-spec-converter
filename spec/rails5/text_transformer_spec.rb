@@ -3,18 +3,21 @@ require 'spec_helper'
 describe Rails5::SpecConverter::TextTransformer do
   it 'leaves invocations with no arguments undisturbed' do
     test_content = <<-RUBY
-      it 'executes the controller action' do
-        get :index
-      end
+      get :index
     RUBY
     expect(described_class.new(test_content).transform).to eq(test_content)
   end
 
   it 'leaves invocations with only permitted keys undisturbed' do
     test_content = <<-RUBY
-      it 'executes the controller action' do
-        get :index, format: :json
-      end
+      get :index, format: :json
+    RUBY
+    expect(described_class.new(test_content).transform).to eq(test_content)
+  end
+
+  it 'leaves invocations that already have a "params" key undisturbed' do
+    test_content = <<-RUBY
+      post :create, params: {token: build.token}, headers: {'X-PANCAKE' => 'banana'}
     RUBY
     expect(described_class.new(test_content).transform).to eq(test_content)
   end

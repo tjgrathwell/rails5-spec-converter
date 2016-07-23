@@ -31,6 +31,7 @@ module Rails5
 
           if args[0].hash_type? && args[0].children.length > 0
             next if looks_like_route_definition?(args[0])
+            next if has_key?(args[0], :params)
 
             write_params_hash(source_rewriter, args[0])
           else
@@ -61,6 +62,10 @@ module Rails5
         end
 
         false
+      end
+
+      def has_key?(hash_node, key)
+        hash_node.children.any? { |pair| pair.children[0].children[0] == key }
       end
 
       def write_params_hash(source_rewriter, hash_node)
