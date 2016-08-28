@@ -41,6 +41,8 @@ By default it will make some noise, run with `rails5-spec-converter --quiet` if 
 
 ### Whitespace
 
+#### Indentation
+
 The tool will attempt to indent the newly-added "params" hash in situations when the arguments are on newlines, e.g.:
 
 ```
@@ -64,6 +66,24 @@ Since the extra spaces in front of 'params' are brand-new whitespace, you may wa
 `rails5-spec-converter --indent '    '`
 
 `rails5-spec-converter --indent '\t'`
+
+#### Hash Spacing
+
+By default, for single-line hashes, a single space will be added after the opening curly brace and before the ending curly brace. The space will be omitted if the new params hash will contain any hash literals that do not have surrounding whitespace, ex:
+
+```
+post :users, user: {name: 'bayleef'}
+```
+
+becomes
+
+```
+post :users, params: {user: {name: 'bayleef'}}
+```
+
+To force hashes to be written without extra whitespace in all files regardless of context, use the argument `--no-hash-spacing`.
+
+To force hashes to be written WITH extra whitespace in all files regardless of context, use the argument `--hash-spacing`.
 
 ## Development
 

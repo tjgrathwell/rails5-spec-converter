@@ -259,4 +259,40 @@ describe Rails5::SpecConverter::TextTransformer do
       RUBY
     end
   end
+
+  describe 'optional configuration' do
+    it 'allows a custom indent to be set' do
+      result = described_class.new(<<-RUBY.strip_heredoc, indent: '    ').transform
+        post :show, branch_name: 'new_design3',
+                    ref: 'foo'
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :show, params: {
+                        branch_name: 'new_design3',
+                        ref: 'foo'
+                    }
+      RUBY
+    end
+
+    it 'allows extra spaces whitespace in hashes to be forced off' do
+      result = described_class.new(<<-RUBY.strip_heredoc, hash_spacing: false).transform
+        get :index, search: 'bayleef', format: :json
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        get :index, params: {search: 'bayleef'}, format: :json
+      RUBY
+    end
+
+    it 'allows extra spaces whitespace in hashes to be forced on' do
+      result = described_class.new(<<-RUBY.strip_heredoc, hash_spacing: true).transform
+        post :users, user: {name: 'bayleef'}
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :users, params: { user: {name: 'bayleef'} }
+      RUBY
+    end
+  end
 end

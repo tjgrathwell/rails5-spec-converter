@@ -22,6 +22,10 @@ module Rails5
           opts.on("-i", "--indent INDENT", "Use specified string for indentation (default is two spaces)") do |indent|
             @options[:indent] = indent.gsub("\\t", "\t")
           end
+
+          opts.on("--[no-]hash-spacing", "Always/never add space around hashes ({foo: 'bar'} vs { foo: 'bar' })") do |hash_spacing|
+            @options[:hash_spacing] = hash_spacing
+          end
         end.parse!
 
         @files = ARGV

@@ -10,6 +10,7 @@ module Rails5
     class TextTransformer
       def initialize(content, options = {})
         @indent = options[:indent] || '  '
+        @hash_spacing = options[:hash_spacing]
         @quiet = options[:quiet]
         @content = content
 
@@ -152,7 +153,7 @@ module Rails5
         extract_indent(joiner) || ''
       end
 
-      def has_space_after_curly?(hash_node)
+      def no_space_after_curly?(hash_node)
         hash_node.parent.loc.expression.source.match(/{\S/)
       end
 
@@ -194,9 +195,16 @@ module Rails5
                                end
           "{\n#{restrung_hash}\n#{final_brace_indent}}"
         else
-          curly_sep = has_space_after_curly?(hash_node) ? '' : ' '
+          curly_sep = determine_curly_sep(hash_node)
           "{#{curly_sep}#{restring_hash(pairs)}#{curly_sep}}"
         end
+      end
+
+      def determine_curly_sep(hash_node)
+        return ' ' if @hash_spacing == true
+        return '' if @hash_spacing == false
+
+        no_space_after_curly?(hash_node) ? '' : ' '
       end
 
       def wrap_arg(node, key)
