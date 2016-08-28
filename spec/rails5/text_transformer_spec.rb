@@ -210,6 +210,30 @@ describe Rails5::SpecConverter::TextTransformer do
              format: :json
       RUBY
     end
+
+    it 'indents hashes appropriately if they start on the first line but contain indented content' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        describe 'important stuff' do
+          let(:perform_action) do
+            post :mandrill, mandrill_events: [{
+              "event" => "hard_bounce"
+            }]
+          end
+        end
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        describe 'important stuff' do
+          let(:perform_action) do
+            post :mandrill, params: {
+              mandrill_events: [{
+                "event" => "hard_bounce"
+              }]
+            }
+          end
+        end
+      RUBY
+    end
   end
 
   describe 'things that look like route definitions' do
