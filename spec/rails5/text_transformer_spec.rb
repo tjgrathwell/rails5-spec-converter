@@ -50,6 +50,16 @@ describe Rails5::SpecConverter::TextTransformer do
     RUBY
   end
 
+  it 'leaves double-splatted hashes alone (FOR NOW)' do
+    result = described_class.new(<<-RUBY.strip_heredoc).transform
+      get :index, **params, format: :json
+    RUBY
+
+    expect(result).to eq(<<-RUBY.strip_heredoc)
+      get :index, **params, format: :json
+    RUBY
+  end
+
   it 'can add "params: {}" when only unpermitted keys are present' do
     result = described_class.new(<<-RUBY.strip_heredoc).transform
       it 'executes the controller action' do

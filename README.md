@@ -85,6 +85,45 @@ To force hashes to be written without extra whitespace in all files regardless o
 
 To force hashes to be written WITH extra whitespace in all files regardless of context, use the argument `--hash-spacing`.
 
+## Limitations
+
+`rails5-spec-converter` wants to partition your arguments into two sets, those that belong in `params` and those that don't.
+
+But it doesn't do any runtime analysis, so it can only effectively sort out non-`params` keys if they're included in a hash literal on the test invocation site. Hence:
+
+```
+all_the_params = {
+  search: 'bayleef',
+  format: :json
+}
+
+get :users, all_the_params
+```
+
+will become
+
+```
+get :users, params: all_the_params
+```
+
+even though `format` should be **outside** the params hash.
+
+#### Future Work
+
+In cases where the hash keys are unknowable at parse time, future versions may optionally attempt to produce this sort of result:
+
+```
+all_the_params = {
+  search: 'bayleef',
+  format: :json
+}
+
+r5sc_user_params, r5sc_other_params = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+get :users, r5sc_other_params.merge(params: r5sc_user_params)
+```
+
+...which should allow your tests to pass without deprecation warnings while introducing an enticing code cleanup oppurtunity.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rspec spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

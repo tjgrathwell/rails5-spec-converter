@@ -32,6 +32,7 @@ module Rails5
 
           if args[0].hash_type? && args[0].children.length > 0
             next if looks_like_route_definition?(args[0])
+            next if has_kwsplat?(args[0])
             next if has_key?(args[0], :params)
 
             write_params_hash(
@@ -66,6 +67,10 @@ module Rails5
         end
 
         false
+      end
+
+      def has_kwsplat?(hash_node)
+        hash_node.children.any? { |node| node.kwsplat_type? }
       end
 
       def has_key?(hash_node, key)
