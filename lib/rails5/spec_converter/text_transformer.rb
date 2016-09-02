@@ -1,5 +1,6 @@
 require 'parser/current'
 require 'astrolabe/builder'
+require 'rails5/spec_converter/text_transformer_options'
 
 module Rails5
   module SpecConverter
@@ -8,10 +9,8 @@ module Rails5
     ALLOWED_KWARG_KEYS = %i(params session flash method body xhr format)
 
     class TextTransformer
-      def initialize(content, options = {})
-        @indent = options[:indent] || '  '
-        @hash_spacing = options[:hash_spacing]
-        @quiet = options[:quiet]
+      def initialize(content, options = TextTransformerOptions.new)
+        @options = options
         @content = content
 
         @source_buffer = Parser::Source::Buffer.new('(string)')
@@ -30,7 +29,9 @@ module Rails5
           next unless args.length > 0
           next unless target.nil? && HTTP_VERBS.include?(verb)
 
-          if args[0].hash_type? && args[0].children.length > 0
+          if args[0].hash_type? && args[0].children.length == 0
+            wrap_arg(args[0], 'params')
+          elsif args[0].hash_type?
             next if looks_like_route_definition?(args[0])
             next if has_kwsplat?(args[0])
             next if has_key?(args[0], :params)
@@ -40,7 +41,8 @@ module Rails5
               original_indent: node.loc.expression.source_line.match(/^(\s*)/)[1]
             )
           else
-            wrap_arg(args[0], 'params')
+            warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
+            wrap_arg(args[0], 'params') if @options.wrap_ambiguous_params?
           end
 
           wrap_arg(args[1], 'headers') if args[1]
@@ -144,7 +146,7 @@ module Rails5
         return nil if indent_before_first_pair(hash_node)
 
         joiner = joiner_between_pairs(hash_node)
-        joiner && joiner.include?("\n") ? @indent : nil
+        joiner && joiner.include?("\n") ? @options.indent : nil
       end
 
       def existing_indent(hash_node)
@@ -206,8 +208,8 @@ module Rails5
       end
 
       def determine_curly_sep(hash_node)
-        return ' ' if @hash_spacing == true
-        return '' if @hash_spacing == false
+        return ' ' if @options.hash_spacing == true
+        return '' if @options.hash_spacing == false
 
         no_space_after_curly?(hash_node) ? '' : ' '
       end
@@ -247,8 +249,14 @@ module Rails5
         @content[node.loc.expression.begin_pos...node.loc.expression.end_pos]
       end
 
+      def warn_about_ambiguous_params(node)
+        log "Ambiguous params found"
+        log "#{@options.file_path}:#{node.loc.line}" if @options.file_path
+        log "```\n#{node.loc.expression.source}\n```\n\n"
+      end
+
       def log(str)
-        return if @quiet
+        return if @options.quiet?
 
         puts str
       end

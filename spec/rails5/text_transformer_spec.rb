@@ -36,18 +36,40 @@ describe Rails5::SpecConverter::TextTransformer do
     RUBY
   end
 
-  it 'can add "params: {}" if the first argument is a method call' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
-      it 'executes the controller action' do
-        get :index, my_params
-      end
-    RUBY
+  describe 'situations with unknown arguments' do
+    before do
+      @options = TextTransformerOptions.new
+      @options.strategy = :optimistic
+    end
 
-    expect(result).to eq(<<-RUBY.strip_heredoc)
-      it 'executes the controller action' do
-        get :index, params: my_params
+    describe '"optimistic" strategy' do
+      it 'can add "params: {}" if the first argument is a method call' do
+        result = described_class.new(<<-RUBY.strip_heredoc).transform
+          get :index, my_params
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, params: my_params
+        RUBY
       end
-    RUBY
+    end
+
+    describe '"skip" strategy' do
+      before do
+        @options = TextTransformerOptions.new
+        @options.strategy = :skip
+      end
+
+      it 'does not add "params" if the first argument is a method call' do
+        result = described_class.new(<<-RUBY.strip_heredoc, @options).transform
+          get :index, my_params
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, my_params
+        RUBY
+      end
+    end
   end
 
   it 'leaves double-splatted hashes alone (FOR NOW)' do
@@ -272,7 +294,10 @@ describe Rails5::SpecConverter::TextTransformer do
 
   describe 'optional configuration' do
     it 'allows a custom indent to be set' do
-      result = described_class.new(<<-RUBY.strip_heredoc, indent: '    ').transform
+      options = TextTransformerOptions.new
+      options.indent = '    '
+
+      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
         post :show, branch_name: 'new_design3',
                     ref: 'foo'
       RUBY
@@ -286,7 +311,10 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'allows extra spaces whitespace in hashes to be forced off' do
-      result = described_class.new(<<-RUBY.strip_heredoc, hash_spacing: false).transform
+      options = TextTransformerOptions.new
+      options.hash_spacing = false
+
+      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
         get :index, search: 'bayleef', format: :json
       RUBY
 
@@ -296,7 +324,10 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'allows extra spaces whitespace in hashes to be forced on' do
-      result = described_class.new(<<-RUBY.strip_heredoc, hash_spacing: true).transform
+      options = TextTransformerOptions.new
+      options.hash_spacing = true
+
+      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
         post :users, user: {name: 'bayleef'}
       RUBY
 
