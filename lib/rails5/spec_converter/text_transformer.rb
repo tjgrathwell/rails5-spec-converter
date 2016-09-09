@@ -29,17 +29,21 @@ module Rails5
           next unless args.length > 0
           next unless target.nil? && HTTP_VERBS.include?(verb)
 
-          if args[0].hash_type? && args[0].children.length == 0
-            wrap_arg(args[0], 'params')
-          elsif args[0].hash_type?
-            next if looks_like_route_definition?(args[0])
-            next if has_kwsplat?(args[0])
-            next if has_key?(args[0], :params)
+          if args[0].hash_type?
+            if args[0].children.length == 0
+              wrap_arg(args[0], 'params')
+            elsif has_kwsplat?(args[0])
+              warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
+              next
+            else
+              next if looks_like_route_definition?(args[0])
+              next if has_key?(args[0], :params)
 
-            write_params_hash(
-              hash_node: args[0],
-              original_indent: node.loc.expression.source_line.match(/^(\s*)/)[1]
-            )
+              write_params_hash(
+                hash_node: args[0],
+                original_indent: node.loc.expression.source_line.match(/^(\s*)/)[1]
+              )
+            end
           else
             warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
             wrap_arg(args[0], 'params') if @options.wrap_ambiguous_params?

@@ -335,5 +335,43 @@ describe Rails5::SpecConverter::TextTransformer do
         post :users, params: { user: {name: 'bayleef'} }
       RUBY
     end
+
+    describe 'warning about ambiguous params' do
+      let(:options) do
+        TextTransformerOptions.new.tap do |o|
+          o.warn_if_ambiguous = true
+        end
+      end
+
+      it 'does not produce warnings for unambigous params' do
+        unambiguous_example = <<-RUBY
+          post :users, user: {name: 'bayleef'}
+        RUBY
+
+        expect {
+          described_class.new(unambiguous_example, options).transform
+        }.not_to output.to_stdout
+      end
+
+      it 'allows warnings to be produced if hash keys are ambigious because of method calls' do
+        ambiguous_method_call_example = <<-RUBY
+          post :users, params
+        RUBY
+
+        expect {
+          described_class.new(ambiguous_method_call_example, options).transform
+        }.to output(/ambiguous/i).to_stdout
+      end
+
+      it 'allows warnings to be produced if hash keys are ambigious because of kwsplat' do
+        ambiguous_kwsplat_example = <<-RUBY
+          post :users, **params, id: 5
+        RUBY
+
+        expect {
+          described_class.new(ambiguous_kwsplat_example, options).transform
+        }.to output(/ambiguous/i).to_stdout
+      end
+    end
   end
 end
