@@ -32,12 +32,13 @@ module Rails5
           if args[0].hash_type?
             if args[0].children.length == 0
               wrap_arg(args[0], 'params')
-            elsif has_kwsplat?(args[0])
-              warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
-              next
             else
               next if looks_like_route_definition?(args[0])
               next if has_key?(args[0], :params)
+              if has_kwsplat?(args[0])
+                warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
+                next unless @options.wrap_ambiguous_params?
+              end
 
               write_params_hash(
                 hash_node: args[0],
@@ -137,6 +138,8 @@ module Rails5
 
       def indent_of_first_value_if_multiline(hash_node, original_indent)
         return nil if hash_node.children.length == 0
+        return nil unless hash_node.children[0].pair_type?
+
         first_value = hash_node.children[0].children[1]
         return nil unless first_value.hash_type? || first_value.array_type?
         value_str_lines = node_to_string(first_value).split("\n")

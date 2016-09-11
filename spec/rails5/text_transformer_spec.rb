@@ -52,6 +52,36 @@ describe Rails5::SpecConverter::TextTransformer do
           get :index, params: my_params
         RUBY
       end
+
+      it 'can add "params: {}" around hashes that contain a double-splat' do
+        result = described_class.new(<<-RUBY.strip_heredoc).transform
+          get :index, **index_params, order: 'asc', format: :json
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, params: { **index_params, order: 'asc' }, format: :json
+        RUBY
+      end
+
+      it 'can add "params: {}" around multiline hashes that contain a double-splat' do
+        result = described_class.new(<<-RUBY.strip_heredoc).transform
+          let(:retrieve_index) do
+            get :index, order: 'asc',
+                        **index_params,
+                        format: :json
+          end
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          let(:retrieve_index) do
+            get :index, params: {
+                          order: 'asc',
+                          **index_params
+                        },
+                        format: :json
+          end
+        RUBY
+      end
     end
 
     describe '"skip" strategy' do
@@ -69,17 +99,17 @@ describe Rails5::SpecConverter::TextTransformer do
           get :index, my_params
         RUBY
       end
+
+      it 'does not add "params" if the first argument is a hash that contains a double-splat' do
+        result = described_class.new(<<-RUBY.strip_heredoc, @options).transform
+          get :index, **params, format: :json
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, **params, format: :json
+        RUBY
+      end
     end
-  end
-
-  it 'leaves double-splatted hashes alone (FOR NOW)' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
-      get :index, **params, format: :json
-    RUBY
-
-    expect(result).to eq(<<-RUBY.strip_heredoc)
-      get :index, **params, format: :json
-    RUBY
   end
 
   it 'can add "params: {}" when only unpermitted keys are present' do
