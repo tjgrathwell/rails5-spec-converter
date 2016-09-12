@@ -298,6 +298,24 @@ describe Rails5::SpecConverter::TextTransformer do
     end
   end
 
+  describe 'trailing commas' do
+    it 'preserves trailing commas if they exist in any of the transformed hashes' do
+      result = described_class.new(<<-RUBY.strip_heredoc).transform
+        post :show, {
+          branch_name: 'new_design3',
+          ref: 'foo',
+        }
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        post :show, params: {
+          branch_name: 'new_design3',
+          ref: 'foo',
+        }
+      RUBY
+    end
+  end
+
   describe 'things that look like route definitions' do
     it 'leaves invocations that look like route definitions undisturbed' do
       test_content_stringy = <<-RUBY

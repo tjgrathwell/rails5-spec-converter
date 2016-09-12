@@ -1,6 +1,7 @@
 require 'parser/current'
 require 'astrolabe/builder'
 require 'rails5/spec_converter/text_transformer_options'
+require 'rails5/spec_converter/hash_node_text_analyzer'
 
 module Rails5
   module SpecConverter
@@ -80,24 +81,34 @@ module Rails5
         hash_node.children.any? { |node| node.kwsplat_type? }
       end
 
+      def has_trailing_comma?(hash_node)
+        HashNodeTextAnalyzer.new(@content, hash_node).text_after_last_pair =~ /,/
+      end
+
       def has_key?(hash_node, key)
         hash_node.children.any? { |pair| pair.children[0].children[0] == key }
       end
 
       def write_params_hash(hash_node:, original_indent: )
         pairs_that_belong_in_params, pairs_that_belong_outside_params = partition_params(hash_node)
+        use_trailing_comma = has_trailing_comma?(hash_node)
 
         if pairs_that_belong_in_params.length > 0
           joiner = joiner_between_pairs(hash_node)
           params_hash = appropriately_spaced_params_hash(
             hash_node: hash_node,
             pairs: pairs_that_belong_in_params,
-            original_indent: original_indent
+            original_indent: original_indent,
+            use_trailing_comma: use_trailing_comma
           )
 
           rewritten_hashes = ["params: #{params_hash}"]
           if pairs_that_belong_outside_params.length > 0
-            rewritten_hashes << restring_hash(pairs_that_belong_outside_params, joiner: joiner)
+            rewritten_hashes << restring_hash(
+              pairs_that_belong_outside_params,
+              joiner: joiner,
+              use_trailing_comma: use_trailing_comma
+            )
           end
           @source_rewriter.replace(
             hash_node.loc.expression,
@@ -125,15 +136,13 @@ module Rails5
       def indent_before_first_pair(hash_node)
         return nil unless hash_node.children.length > 0
 
-        text_before_first_pair = @content[hash_node.loc.expression.begin_pos...hash_node.children.first.loc.expression.begin_pos]
-        extract_indent(text_before_first_pair)
+        extract_indent(HashNodeTextAnalyzer.new(@content, hash_node).text_before_first_pair)
       end
 
       def indent_after_last_pair(hash_node)
         return nil unless hash_node.children.length > 0
 
-        text_after_last_pair = @content[hash_node.children.last.loc.expression.end_pos...hash_node.loc.expression.end_pos]
-        extract_indent(text_after_last_pair)
+        extract_indent(HashNodeTextAnalyzer.new(@content, hash_node).text_after_last_pair)
       end
 
       def indent_of_first_value_if_multiline(hash_node, original_indent)
@@ -188,7 +197,7 @@ module Rails5
         @content[node1.loc.expression.end_pos...node2.loc.expression.begin_pos]
       end
 
-      def appropriately_spaced_params_hash(hash_node:, pairs:, original_indent: )
+      def appropriately_spaced_params_hash(hash_node:, pairs:, original_indent:, use_trailing_comma:)
         outer_indent = existing_indent(hash_node)
         middle_indent = indent_of_first_value_if_multiline(hash_node, original_indent)
         inner_indent = additional_indent(hash_node)
@@ -197,7 +206,8 @@ module Rails5
           restrung_hash = restring_hash(
             pairs,
             indent: outer_indent + (inner_indent || ''),
-            joiner: ",\n"
+            joiner: ",\n",
+            use_trailing_comma: use_trailing_comma
           )
           if middle_indent
             restrung_hash = original_indent + add_indent(restrung_hash, middle_indent)
@@ -210,7 +220,7 @@ module Rails5
           "{\n#{restrung_hash}\n#{final_brace_indent}}"
         else
           curly_sep = determine_curly_sep(hash_node)
-          "{#{curly_sep}#{restring_hash(pairs)}#{curly_sep}}"
+          "{#{curly_sep}#{restring_hash(pairs, use_trailing_comma: use_trailing_comma)}#{curly_sep}}"
         end
       end
 
@@ -230,8 +240,13 @@ module Rails5
         @source_rewriter.replace(node_loc, "#{key}: #{node_source}")
       end
 
-      def restring_hash(pairs, joiner: ", ", indent: '')
-        pairs.map { |pair| "#{indent}#{pair.loc.expression.source}" }.join(joiner)
+      def restring_hash(pairs, joiner: ", ", indent: '', use_trailing_comma: false)
+        hash_string = pairs.map { |pair| "#{indent}#{pair.loc.expression.source}" }.join(joiner)
+        if use_trailing_comma
+          hash_string + ','
+        else
+          hash_string
+        end
       end
 
       def add_indent(str, indent)
