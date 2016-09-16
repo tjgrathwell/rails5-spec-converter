@@ -1,4 +1,4 @@
-require 'rails5/spec_converter/hash_node_text_analyzer'
+require 'rails5/spec_converter/node_textifier'
 
 class HashRewriter
   # technically format is special
@@ -11,25 +11,26 @@ class HashRewriter
     @content = content
     @hash_node = hash_node
     @original_indent = original_indent
+    @textifier = NodeTextifier.new(@content)
+    partition_params(@hash_node)
   end
 
   def rewritten_params_hash
-    pairs_that_belong_in_params, pairs_that_belong_outside_params = partition_params(hash_node)
     use_trailing_comma = has_trailing_comma?(hash_node)
 
-    return if pairs_that_belong_in_params.length == 0
+    return if @pairs_that_belong_in_params.length == 0
 
     joiner = joiner_between_pairs(hash_node)
     params_hash = appropriately_spaced_params_hash(
       hash_node: hash_node,
-      pairs: pairs_that_belong_in_params,
+      pairs: @pairs_that_belong_in_params,
       use_trailing_comma: use_trailing_comma
     )
 
     rewritten_hashes = ["params: #{params_hash}"]
-    if pairs_that_belong_outside_params.length > 0
+    if @pairs_that_belong_outside_params.length > 0
       rewritten_hashes << restring_hash(
-        pairs_that_belong_outside_params,
+        @pairs_that_belong_outside_params,
         joiner: joiner,
         use_trailing_comma: use_trailing_comma
       )
@@ -39,42 +40,40 @@ class HashRewriter
   end
 
   def should_rewrite_hash?
-    pairs_that_belong_in_params, _ = partition_params(hash_node)
-    pairs_that_belong_in_params.length > 0
+    @pairs_that_belong_in_params.length > 0
   end
 
   private
 
   def partition_params(hash_node)
-    pairs_that_belong_in_params = []
-    pairs_that_belong_outside_params = []
+    @pairs_that_belong_in_params = []
+    @pairs_that_belong_outside_params = []
 
     hash_node.children.each do |pair|
       key = pair.children[0].children[0]
 
       if ALLOWED_KWARG_KEYS.include?(key)
-        pairs_that_belong_outside_params << pair
+        @pairs_that_belong_outside_params << pair
       else
-        pairs_that_belong_in_params << pair
+        @pairs_that_belong_in_params << pair
       end
     end
-    return pairs_that_belong_in_params, pairs_that_belong_outside_params
   end
 
   def has_trailing_comma?(hash_node)
-    HashNodeTextAnalyzer.new(@content, hash_node).text_after_last_pair =~ /,/
+    @textifier.text_after_last_pair(hash_node) =~ /,/
   end
 
   def indent_before_first_pair(hash_node)
     return nil unless hash_node.children.length > 0
 
-    extract_indent(HashNodeTextAnalyzer.new(@content, hash_node).text_before_first_pair)
+    extract_indent(@textifier.text_before_first_pair(hash_node))
   end
 
   def indent_after_last_pair(hash_node)
     return nil unless hash_node.children.length > 0
 
-    extract_indent(HashNodeTextAnalyzer.new(@content, hash_node).text_after_last_pair)
+    extract_indent(@textifier.text_after_last_pair(hash_node))
   end
 
   def indent_of_first_value_if_multiline(hash_node)
@@ -83,7 +82,7 @@ class HashRewriter
 
     first_value = hash_node.children[0].children[1]
     return nil unless first_value.hash_type? || first_value.array_type?
-    value_str_lines = node_to_string(first_value).split("\n")
+    value_str_lines = @textifier.node_to_string(first_value).split("\n")
     return nil if value_str_lines.length == 1
     return nil unless value_str_lines[0].match(/[\s\[{]/)
 
@@ -98,7 +97,7 @@ class HashRewriter
   end
 
   def existing_indent(hash_node)
-    text_before_hash = text_before_node(hash_node)
+    text_before_hash = @textifier.text_before_node(hash_node)
     whitespace_indent = extract_indent(text_before_hash)
     return whitespace_indent if whitespace_indent
 
@@ -116,17 +115,13 @@ class HashRewriter
     texts_between = []
     hash_node.children[0..-2].each_with_index do |pair, index|
       next_pair = hash_node.children[index + 1]
-      texts_between << text_between_siblings(pair, next_pair)
+      texts_between << @textifier.text_between_siblings(pair, next_pair)
     end
     if texts_between.uniq.length > 1
       log "Inconsistent whitespace between hash pairs, using the first separator (#{texts_between[0].inspect})."
       log "Seen when processing this expression: \n```\n#{hash_node.loc.expression.source}\n```\n\n"
     end
     texts_between[0]
-  end
-
-  def text_between_siblings(node1, node2)
-    @content[node1.loc.expression.end_pos...node2.loc.expression.begin_pos]
   end
 
   def appropriately_spaced_params_hash(hash_node:, pairs:, use_trailing_comma:)
@@ -181,16 +176,5 @@ class HashRewriter
 
     match = str.match("\n(\s*)")
     match[1] if match
-  end
-
-  def text_before_node(node)
-    previous_sibling = node.parent.children[node.sibling_index - 1]
-    return nil unless previous_sibling.loc.expression
-
-    text_between_siblings(previous_sibling, node)
-  end
-
-  def node_to_string(node)
-    @content[node.loc.expression.begin_pos...node.loc.expression.end_pos]
   end
 end

@@ -1,7 +1,6 @@
 require 'parser/current'
 require 'astrolabe/builder'
 require 'rails5/spec_converter/text_transformer_options'
-require 'rails5/spec_converter/hash_node_text_analyzer'
 require 'rails5/spec_converter/hash_rewriter'
 
 module Rails5
