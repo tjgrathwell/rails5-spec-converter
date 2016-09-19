@@ -21,18 +21,45 @@ class HashRewriter
     joiner = joiner_between_pairs(hash_node)
     rewritten_hashes = []
 
-    if multiline?(hash_node)
+    if multiline? && should_wrap_rewritten_hash_in_curly_braces?
+      params_hash = restring_hash(
+        @pairs_that_belong_in_params,
+        joiner: ",\n"
+      )
+
+      other_hash = restring_hash(
+        @pairs_that_belong_outside_params,
+        joiner: ",\n"
+      )
+
+      optional_comma = has_trailing_comma?(hash_node) ? ',' : ''
+      new_wrapped_hash_content = wrap_and_indent(
+        "{",
+        "}",
+        [
+          wrap_and_indent(
+            "params: {",
+            "}#{optional_comma}",
+            params_hash,
+            @options.indent
+          ),
+          "#{other_hash}"
+        ].join("\n"),
+        @options.indent
+      )
+      return add_indent(new_wrapped_hash_content, original_indent, skip_first_line: true)
+    elsif multiline?
       params_hash = appropriately_indented_params_hash(
-        hash_node: hash_node,
         pairs: @pairs_that_belong_in_params
       )
+
       rewritten_hashes << "params: #{params_hash}"
     else
       curly_sep = determine_curly_sep(hash_node)
       rewritten_hashes << "params: {#{curly_sep}#{restring_hash(@pairs_that_belong_in_params)}#{curly_sep}}"
     end
 
-    if @pairs_that_belong_outside_params.length > 0
+    if has_keys_outside_params?
       rewritten_hashes << restring_hash(
         @pairs_that_belong_outside_params,
         joiner: joiner
@@ -44,6 +71,14 @@ class HashRewriter
 
   def should_rewrite_hash?
     @pairs_that_belong_in_params.length > 0
+  end
+
+  def has_keys_outside_params?
+    @pairs_that_belong_outside_params.length > 0
+  end
+
+  def should_wrap_rewritten_hash_in_curly_braces?
+    multiline? && has_keys_outside_params? && @textifier.node_to_string(hash_node) =~ /^{\n/
   end
 
   private
@@ -79,7 +114,7 @@ class HashRewriter
     extract_indent(@textifier.text_after_last_pair(hash_node))
   end
 
-  def multiline?(hash_node)
+  def multiline?
     @textifier.node_to_string(hash_node).include?("\n")
   end
 
@@ -131,7 +166,7 @@ class HashRewriter
     texts_between[0]
   end
 
-  def appropriately_indented_params_hash(hash_node:, pairs:)
+  def appropriately_indented_params_hash(pairs:)
     outer_indent = existing_indent(hash_node)
     middle_indent = indent_of_first_value_if_multiline(hash_node)
     inner_indent = additional_indent(hash_node)
@@ -168,8 +203,22 @@ class HashRewriter
     end
   end
 
-  def add_indent(str, indent)
-    str.split("\n").map { |line| indent + line }.join("\n")
+  def add_indent_and_curly_braces(str, indent)
+    "{\n#{add_indent(str, indent)}\n}"
+  end
+
+  def wrap_and_indent(start_string, end_string, inner_string, indent)
+    "#{start_string}\n#{add_indent(inner_string, indent)}\n#{end_string}"
+  end
+
+  def add_indent(str, indent, skip_first_line: false)
+    str.split("\n").each_with_index.map do |line, index|
+      if index.zero? && skip_first_line
+        line
+      else
+        indent + line
+      end
+    end.join("\n")
   end
 
   def extract_indent(str)

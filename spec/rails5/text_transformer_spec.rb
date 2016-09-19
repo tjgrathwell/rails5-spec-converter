@@ -301,17 +301,25 @@ describe Rails5::SpecConverter::TextTransformer do
   describe 'trailing commas' do
     it 'preserves trailing commas if they exist in any of the transformed hashes' do
       result = described_class.new(<<-RUBY.strip_heredoc).transform
-        post :show, {
-          branch_name: 'new_design3',
-          ref: 'foo',
-        }
+        let(:perform_request) do
+          post :show, {
+            branch_name: 'new_design3',
+            ref: 'foo',
+            format: :json,
+          }
+        end
       RUBY
 
       expect(result).to eq(<<-RUBY.strip_heredoc)
-        post :show, params: {
-          branch_name: 'new_design3',
-          ref: 'foo',
-        }
+        let(:perform_request) do
+          post :show, {
+            params: {
+              branch_name: 'new_design3',
+              ref: 'foo',
+            },
+            format: :json,
+          }
+        end
       RUBY
     end
   end
