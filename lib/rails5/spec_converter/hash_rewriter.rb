@@ -178,4 +178,10 @@ class HashRewriter
     match = str.match("\n(\s*)")
     match[1] if match
   end
+
+  def log(str)
+    return if @options.quiet?
+
+    puts str
+  end
 end

@@ -384,6 +384,19 @@ describe Rails5::SpecConverter::TextTransformer do
       RUBY
     end
 
+    describe 'warning about inconsistent indentation' do
+      it 'produces warnings if hashes have inconsistent separators between pairs' do
+        inconsistent_spacing_example = <<-RUBY
+          post :users, name: 'SampleUser', email: 'sample@example.com',
+                       role: Roles::User
+        RUBY
+
+        expect {
+          described_class.new(inconsistent_spacing_example).transform
+        }.to output(/inconsistent/i).to_stdout
+      end
+    end
+
     describe 'warning about ambiguous params' do
       let(:options) do
         TextTransformerOptions.new.tap do |o|
