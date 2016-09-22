@@ -1,6 +1,28 @@
 require 'spec_helper'
 
 describe Rails5::SpecConverter::TextTransformer do
+  describe 'unparsable ruby' do
+    it 'leaves unparsable ruby alone' do
+      options = TextTransformerOptions.new
+      options.quiet = true
+
+      test_content = <<-RUBYISH
+        gibberish do
+      RUBYISH
+      expect(described_class.new(test_content, options).transform).to eq(test_content)
+    end
+
+    it 'prints a warning message' do
+      test_content = <<-RUBYISH
+        gibberish do
+      RUBYISH
+
+      expect {
+        described_class.new(test_content).transform
+      }.to output(/unparsable/i).to_stdout
+    end
+  end
+
   it 'leaves invocations with no arguments undisturbed' do
     test_content = <<-RUBY
       get :index

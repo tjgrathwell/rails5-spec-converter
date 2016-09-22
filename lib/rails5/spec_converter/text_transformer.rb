@@ -23,6 +23,11 @@ module Rails5
 
       def transform
         root_node = @parser.parse(@source_buffer)
+        unless root_node
+          log "Parser saw some unparsable content, skipping...\n\n"
+          return @source_rewriter.process
+        end
+
         root_node.each_node(:send) do |node|
           target, verb, action, *args = node.children
           next unless args.length > 0
