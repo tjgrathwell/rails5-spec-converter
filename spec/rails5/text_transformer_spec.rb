@@ -273,6 +273,32 @@ describe Rails5::SpecConverter::TextTransformer do
       RUBY
     end
 
+    describe 'inconsistent hash spacing' do
+      before do
+        options = TextTransformerOptions.new
+        options.quiet = true
+      end
+
+      describe 'when a hash has inconsistent indentation' do
+        it 'rewrites hashes as single-line if the first two pairs are on the same line' do
+          result = described_class.new(<<-RUBY.strip_heredoc).transform
+            let(:perform_action) do
+              post :search,
+                type: 'fire', limit: 10,
+                order: 'asc'
+            end
+          RUBY
+
+          expect(result).to eq(<<-RUBY.strip_heredoc)
+            let(:perform_action) do
+              post :search,
+                params: { type: 'fire', limit: 10, order: 'asc' }
+            end
+          RUBY
+        end
+      end
+    end
+
     it 'indents hashes appropriately if they start on the first line but contain indented content' do
       result = described_class.new(<<-RUBY.strip_heredoc).transform
         describe 'important stuff' do

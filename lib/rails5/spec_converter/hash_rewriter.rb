@@ -18,8 +18,9 @@ class HashRewriter
   def rewritten_params_hash
     return if @pairs_that_belong_in_params.length == 0
 
-    joiner = joiner_between_pairs(hash_node)
     rewritten_hashes = []
+
+    warn_if_inconsistent_indentation
 
     if multiline? && should_wrap_rewritten_hash_in_curly_braces?
       params_hash = restring_hash(
@@ -48,7 +49,7 @@ class HashRewriter
         @options.indent
       )
       return add_indent(new_wrapped_hash_content, original_indent, skip_first_line: true)
-    elsif multiline?
+    elsif multiline? && should_try_to_rewrite_multiline_hash?
       params_hash = appropriately_indented_params_hash(
         pairs: @pairs_that_belong_in_params
       )
@@ -62,11 +63,11 @@ class HashRewriter
     if has_keys_outside_params?
       rewritten_hashes << restring_hash(
         @pairs_that_belong_outside_params,
-        joiner: joiner
+        joiner: first_joiner_between_pairs
       )
     end
 
-    rewritten_hashes.join(joiner)
+    rewritten_hashes.join(first_joiner_between_pairs)
   end
 
   def should_rewrite_hash?
@@ -79,6 +80,12 @@ class HashRewriter
 
   def should_wrap_rewritten_hash_in_curly_braces?
     multiline? && has_keys_outside_params? && @textifier.node_to_string(hash_node) =~ /^{\n/
+  end
+
+  def should_try_to_rewrite_multiline_hash?
+    return false unless multiline?
+    return true unless first_joiner_between_pairs
+    first_joiner_between_pairs =~ /\n/
   end
 
   private
@@ -134,7 +141,7 @@ class HashRewriter
   def additional_indent(hash_node)
     return nil if indent_before_first_pair(hash_node)
 
-    joiner = joiner_between_pairs(hash_node)
+    joiner = first_joiner_between_pairs
     joiner && joiner.include?("\n") ? @options.indent : nil
   end
 
@@ -145,7 +152,7 @@ class HashRewriter
 
     return indent_before_first_pair(hash_node) if indent_before_first_pair(hash_node)
 
-    joiner = joiner_between_pairs(hash_node)
+    joiner = first_joiner_between_pairs
     extract_indent(joiner) || ''
   end
 
@@ -153,17 +160,30 @@ class HashRewriter
     hash_node.parent.loc.expression.source.match(/{\S/)
   end
 
-  def joiner_between_pairs(hash_node)
-    texts_between = []
+  def texts_between_pairs
+    return @texts_between if @texts_between
+
+    @texts_between = []
     hash_node.children[0..-2].each_with_index do |pair, index|
       next_pair = hash_node.children[index + 1]
-      texts_between << @textifier.text_between_siblings(pair, next_pair)
+      @texts_between << @textifier.text_between_siblings(pair, next_pair)
     end
-    if texts_between.uniq.length > 1
-      log "Inconsistent whitespace between hash pairs, using the first separator (#{texts_between[0].inspect})."
-      log "Seen when processing this expression: \n```\n#{hash_node.loc.expression.source}\n```\n\n"
-    end
-    texts_between[0]
+    @texts_between
+  end
+
+  def first_joiner_between_pairs
+    texts_between_pairs[0]
+  end
+
+  def has_inconsistent_indentation?
+    texts_between_pairs.uniq.length > 1
+  end
+
+  def warn_if_inconsistent_indentation
+    return unless has_inconsistent_indentation?
+
+    log "Inconsistent whitespace between hash pairs, using the first separator (#{texts_between_pairs[0].inspect})."
+    log "Seen when processing this expression: \n```\n#{hash_node.loc.expression.source}\n```\n\n"
   end
 
   def appropriately_indented_params_hash(pairs:)
