@@ -1,24 +1,34 @@
 require 'spec_helper'
 
 describe Rails5::SpecConverter::TextTransformer do
-  describe 'unparsable ruby' do
-    it 'leaves unparsable ruby alone' do
-      options = TextTransformerOptions.new
-      options.quiet = true
+  def transform(text, options = nil)
+    if options
+      described_class.new(text, options).transform
+    else
+      described_class.new(text).transform
+    end
+  end
 
-      test_content = <<-RUBYISH
+  def quiet_transform(text)
+    options = TextTransformerOptions.new
+    options.quiet = true
+    transform(text, options)
+  end
+
+  describe 'unparsable ruby' do
+    let(:unparsable_content) do
+      <<-RUBYISH
         gibberish do
       RUBYISH
-      expect(described_class.new(test_content, options).transform).to eq(test_content)
+    end
+
+    it 'leaves unparsable ruby alone' do
+      expect(quiet_transform(unparsable_content)).to eq(unparsable_content)
     end
 
     it 'prints a warning message' do
-      test_content = <<-RUBYISH
-        gibberish do
-      RUBYISH
-
       expect {
-        described_class.new(test_content).transform
+        transform(unparsable_content)
       }.to output(/unparsable/i).to_stdout
     end
   end
@@ -27,25 +37,25 @@ describe Rails5::SpecConverter::TextTransformer do
     test_content = <<-RUBY
       get :index
     RUBY
-    expect(described_class.new(test_content).transform).to eq(test_content)
+    expect(transform(test_content)).to eq(test_content)
   end
 
   it 'leaves invocations with only permitted keys undisturbed' do
     test_content = <<-RUBY
       get :index, format: :json
     RUBY
-    expect(described_class.new(test_content).transform).to eq(test_content)
+    expect(transform(test_content)).to eq(test_content)
   end
 
   it 'leaves invocations that already have a "params" key undisturbed' do
     test_content = <<-RUBY
       post :create, params: {token: build.token}, headers: {'X-PANCAKE' => 'banana'}
     RUBY
-    expect(described_class.new(test_content).transform).to eq(test_content)
+    expect(transform(test_content)).to eq(test_content)
   end
 
   it 'can add "params: {}" if an empty hash of arguments is present' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
+    result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, {}
       end
@@ -66,7 +76,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
     describe '"optimistic" strategy' do
       it 'can add "params: {}" if the first argument is a method call' do
-        result = described_class.new(<<-RUBY.strip_heredoc).transform
+        result = transform(<<-RUBY.strip_heredoc)
           get :index, my_params
         RUBY
 
@@ -76,7 +86,7 @@ describe Rails5::SpecConverter::TextTransformer do
       end
 
       it 'can add "params: {}" around hashes that contain a double-splat' do
-        result = described_class.new(<<-RUBY.strip_heredoc).transform
+        result = transform(<<-RUBY.strip_heredoc)
           get :index, **index_params, order: 'asc', format: :json
         RUBY
 
@@ -86,7 +96,7 @@ describe Rails5::SpecConverter::TextTransformer do
       end
 
       it 'can add "params: {}" around multiline hashes that contain a double-splat' do
-        result = described_class.new(<<-RUBY.strip_heredoc).transform
+        result = transform(<<-RUBY.strip_heredoc)
           let(:retrieve_index) do
             get :index, order: 'asc',
                         **index_params,
@@ -113,7 +123,7 @@ describe Rails5::SpecConverter::TextTransformer do
       end
 
       it 'does not add "params" if the first argument is a method call' do
-        result = described_class.new(<<-RUBY.strip_heredoc, @options).transform
+        result = transform(<<-RUBY.strip_heredoc, @options)
           get :index, my_params
         RUBY
 
@@ -123,7 +133,7 @@ describe Rails5::SpecConverter::TextTransformer do
       end
 
       it 'does not add "params" if the first argument is a hash that contains a double-splat' do
-        result = described_class.new(<<-RUBY.strip_heredoc, @options).transform
+        result = transform(<<-RUBY.strip_heredoc, @options)
           get :index, **params, format: :json
         RUBY
 
@@ -135,7 +145,7 @@ describe Rails5::SpecConverter::TextTransformer do
   end
 
   it 'can add "params: {}" when only unpermitted keys are present' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
+    result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, search: 'bayleef'
       end
@@ -149,7 +159,7 @@ describe Rails5::SpecConverter::TextTransformer do
   end
 
   it 'can add "params: {}" when both permitted and unpermitted keys are present' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
+    result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, search: 'bayleef', format: :json
       end
@@ -164,7 +174,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
   describe 'header params' do
     it 'assigns additional arguments as "headers"' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         get :index, {search: 'bayleef'}, {'X-PANCAKE' => 'banana'}
       RUBY
 
@@ -174,7 +184,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'adds "params" and "header" keys regardless of surrounding whitespace' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         get :index, {
           search: 'bayleef'
         }, {
@@ -192,7 +202,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'wraps header args in curly braces if they are not already present' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         get :show, nil, 'X-BANANA' => 'pancake'
       RUBY
 
@@ -203,7 +213,7 @@ describe Rails5::SpecConverter::TextTransformer do
   end
 
   it 'keeps hashes tightly packed if the existing source has any tightly-packed hashes in it' do
-    result = described_class.new(<<-RUBY.strip_heredoc).transform
+    result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
         get :index, {search: 'bayleef', format: :json}
       end
@@ -218,7 +228,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
   describe 'preserving whitespace' do
     it 'preserves hash indentation if the hash starts on a new line' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         it 'executes the controller action' do
           post :create, {
             color: 'blue',
@@ -238,7 +248,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'preserves hash indentation if the hash starts on a new line and a headers hash is present' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         post :create, {
           color: 'blue',
           size: {
@@ -262,7 +272,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'indents hashes appropriately if they start on the same line as the action' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         post :show, branch_name: 'new_design3',
                     ref: 'foo',
                     format: :json
@@ -278,7 +288,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'indents hashes appropriately if they start on a new line' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         post :show,
              branch_name: 'new_design3',
              ref: 'foo',
@@ -296,14 +306,9 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     describe 'inconsistent hash spacing' do
-      before do
-        options = TextTransformerOptions.new
-        options.quiet = true
-      end
-
       describe 'when a hash has inconsistent indentation' do
         it 'rewrites hashes as single-line if the first two pairs are on the same line' do
-          result = described_class.new(<<-RUBY.strip_heredoc).transform
+          result = quiet_transform(<<-RUBY.strip_heredoc)
             let(:perform_action) do
               post :search,
                 type: 'fire', limit: 10,
@@ -322,7 +327,7 @@ describe Rails5::SpecConverter::TextTransformer do
     end
 
     it 'indents hashes appropriately if they start on the first line but contain indented content' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         describe 'important stuff' do
           let(:perform_action) do
             post :mandrill, mandrill_events: [{
@@ -348,7 +353,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
   describe 'trailing commas' do
     it 'preserves trailing commas if they exist in any of the transformed hashes' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         let(:perform_request) do
           post :show, {
             branch_name: 'new_design3',
@@ -377,16 +382,16 @@ describe Rails5::SpecConverter::TextTransformer do
       test_content_stringy = <<-RUBY
         get 'profile', to: 'users#show'
       RUBY
-      expect(described_class.new(test_content_stringy).transform).to eq(test_content_stringy)
+      expect(transform(test_content_stringy)).to eq(test_content_stringy)
 
       test_content_hashy = <<-RUBY
         get 'profile', to: :show, controller: 'users'
       RUBY
-      expect(described_class.new(test_content_hashy).transform).to eq(test_content_hashy)
+      expect(transform(test_content_hashy)).to eq(test_content_hashy)
     end
 
     it 'adds "params" to invocations that have the key `to` but are not route definitions' do
-      result = described_class.new(<<-RUBY.strip_heredoc).transform
+      result = transform(<<-RUBY.strip_heredoc)
         get 'users', from: yesterday, to: today
       RUBY
 
@@ -401,7 +406,7 @@ describe Rails5::SpecConverter::TextTransformer do
       options = TextTransformerOptions.new
       options.indent = '    '
 
-      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
+      result = transform(<<-RUBY.strip_heredoc, options)
         post :show, branch_name: 'new_design3',
                     ref: 'foo'
       RUBY
@@ -418,7 +423,7 @@ describe Rails5::SpecConverter::TextTransformer do
       options = TextTransformerOptions.new
       options.hash_spacing = false
 
-      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
+      result = transform(<<-RUBY.strip_heredoc, options)
         get :index, search: 'bayleef', format: :json
       RUBY
 
@@ -431,7 +436,7 @@ describe Rails5::SpecConverter::TextTransformer do
       options = TextTransformerOptions.new
       options.hash_spacing = true
 
-      result = described_class.new(<<-RUBY.strip_heredoc, options).transform
+      result = transform(<<-RUBY.strip_heredoc, options)
         post :users, user: {name: 'bayleef'}
       RUBY
 
@@ -448,7 +453,7 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
 
         expect {
-          described_class.new(inconsistent_spacing_example).transform
+          transform(inconsistent_spacing_example)
         }.to output(/inconsistent/i).to_stdout
       end
     end
@@ -466,7 +471,7 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
 
         expect {
-          described_class.new(unambiguous_example, options).transform
+          transform(unambiguous_example, options)
         }.not_to output.to_stdout
       end
 
@@ -476,7 +481,7 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
 
         expect {
-          described_class.new(ambiguous_method_call_example, options).transform
+          transform(ambiguous_method_call_example, options)
         }.to output(/ambiguous/i).to_stdout
       end
 
@@ -486,7 +491,7 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
 
         expect {
-          described_class.new(ambiguous_kwsplat_example, options).transform
+          transform(ambiguous_kwsplat_example, options)
         }.to output(/ambiguous/i).to_stdout
       end
     end
