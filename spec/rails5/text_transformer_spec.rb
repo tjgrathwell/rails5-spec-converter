@@ -142,6 +142,24 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
       end
     end
+
+    describe "'uglify' strategy" do
+      before do
+        @options = TextTransformerOptions.new
+        @options.strategy = :uglify
+      end
+
+      it 'attempts to split the unkown arguments into two hashes' do
+        result = transform(<<-RUBY.strip_heredoc, @options)
+          get :index, my_params
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          _inner, _outer = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+          get :index, _outer.merge(params: _inner)
+        RUBY
+      end
+    end
   end
 
   it 'can add "params: {}" when only unpermitted keys are present' do

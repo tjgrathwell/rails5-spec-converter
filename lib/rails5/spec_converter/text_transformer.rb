@@ -11,6 +11,7 @@ module Rails5
       def initialize(content, options = TextTransformerOptions.new)
         @options = options
         @content = content
+        @textifier = NodeTextifier.new(@content)
 
         @source_buffer = Parser::Source::Buffer.new('(string)')
         @source_buffer.source = @content
@@ -58,7 +59,7 @@ module Rails5
             end
           else
             warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
-            wrap_arg(args[0], 'params') if @options.wrap_ambiguous_params?
+            handle_ambiguous_method_call!(node)
           end
 
           wrap_arg(args[1], 'headers') if args[1]
@@ -68,6 +69,26 @@ module Rails5
       end
 
       private
+
+      def handle_ambiguous_method_call!(node)
+        target, verb, action, *args = node.children
+
+        if @options.wrap_ambiguous_params?
+          wrap_arg(args[0], 'params') if @options.wrap_ambiguous_params?
+        end
+
+        if @options.uglify_ambiguous_params?
+          keys = (HashRewriter::ALLOWED_KWARG_KEYS - [:params]).join(' ')
+          partition_clause = [
+            @textifier.node_to_string(args[0]),
+            "partition { |k,v| %i{#{keys}}.include?(k) }",
+            'map { |a| Hash[a] }'
+          ].join('.')
+
+          @source_rewriter.insert_before(node.loc.expression, "_inner, _outer = #{partition_clause}\n")
+          @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+        end
+      end
 
       def looks_like_route_definition?(hash_node)
         keys = hash_node.children.map { |pair| pair.children[0].children[0] }

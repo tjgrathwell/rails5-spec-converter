@@ -15,6 +15,10 @@ class TextTransformerOptions
     @strategy == :optimistic
   end
 
+  def uglify_ambiguous_params?
+    @strategy == :uglify
+  end
+
   def warn_about_ambiguous_params?
     @warn_if_ambiguous
   end

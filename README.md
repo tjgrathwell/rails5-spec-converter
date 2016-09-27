@@ -68,6 +68,20 @@ even though `format` should be **outside** the params hash.
 
 * `--strategy skip` will never wrap the unknowable args in `params`
 
+* `--strategy uglify` will attempt to split the hash into `params` and non-`params` hashes at runtime, like so:
+
+  ```
+  all_the_params = {
+    search: 'bayleef',
+    format: :json
+  }
+
+  _inner, _outer = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+  get :users, _outer.merge(params: _inner)
+  ```
+
+  This should allow your tests to pass without deprecation warnings while introducing an enticing code cleanup oppurtunity.
+
 ### Whitespace
 
 #### Indentation
@@ -113,22 +127,6 @@ post :users, params: {user: {name: 'bayleef'}}
 To force hashes to be written without extra whitespace in all files regardless of context, use the argument `--no-hash-spacing`.
 
 To force hashes to be written WITH extra whitespace in all files regardless of context, use the argument `--hash-spacing`.
-
-### Future Work
-
-Future versions may introduce an `uglify` argument for `--strategy`, which resolves the runtime hash heys problem the following way:
-
-```
-all_the_params = {
-  search: 'bayleef',
-  format: :json
-}
-
-r5sc_user_params, r5sc_other_params = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
-get :users, r5sc_other_params.merge(params: r5sc_user_params)
-```
-
-This should allow your tests to pass without deprecation warnings while introducing an enticing code cleanup oppurtunity.
 
 ## Development
 
