@@ -49,7 +49,7 @@ module Rails5
                 content: @content,
                 options: @options,
                 hash_node: args[0],
-                original_indent: node.loc.expression.source_line.match(/^(\s*)/)[1]
+                original_indent: line_indent(node)
               )
 
               @source_rewriter.replace(
@@ -85,8 +85,11 @@ module Rails5
             'map { |a| Hash[a] }'
           ].join('.')
 
-          @source_rewriter.insert_before(node.loc.expression, "_inner, _outer = #{partition_clause}\n")
-          @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+          text_before_node = node.loc.expression.source_line[0...node.loc.expression.column]
+          if text_before_node =~ /^\s+$/
+            @source_rewriter.insert_before(node.loc.expression, "_inner, _outer = #{partition_clause}\n#{line_indent(node)}")
+            @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+          end
         end
       end
 
@@ -129,6 +132,10 @@ module Rails5
         log "Ambiguous params found"
         log "#{@options.file_path}:#{node.loc.line}" if @options.file_path
         log "```\n#{node.loc.expression.source}\n```\n\n"
+      end
+
+      def line_indent(node)
+        node.loc.expression.source_line.match(/^(\s*)/)[1]
       end
 
       def log(str)

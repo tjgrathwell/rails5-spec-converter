@@ -151,12 +151,16 @@ describe Rails5::SpecConverter::TextTransformer do
 
       it 'attempts to split the unkown arguments into two hashes' do
         result = transform(<<-RUBY.strip_heredoc, @options)
-          get :index, my_params
+          let(:perform_request) do
+            get :index, my_params
+          end
         RUBY
 
         expect(result).to eq(<<-RUBY.strip_heredoc)
-          _inner, _outer = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
-          get :index, _outer.merge(params: _inner)
+          let(:perform_request) do
+            _inner, _outer = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            get :index, _outer.merge(params: _inner)
+          end
         RUBY
       end
     end
