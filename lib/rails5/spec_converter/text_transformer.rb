@@ -86,11 +86,34 @@ module Rails5
           ].join('.')
 
           text_before_node = node.loc.expression.source_line[0...node.loc.expression.column]
+          first_line_content = "_inner, _outer = #{partition_clause}"
           if text_before_node =~ /^\s+$/
-            @source_rewriter.insert_before(node.loc.expression, "_inner, _outer = #{partition_clause}\n#{line_indent(node)}")
+            @source_rewriter.insert_before(node.loc.expression, "#{first_line_content}\n#{line_indent(node)}")
             @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+          else
+            return unless in_a_block_with_only_whitespace?(node)
+
+            new_indent = line_indent(node) + @options.indent
+            @source_rewriter.insert_before(node.loc.expression, "\n" + new_indent + first_line_content + "\n" + new_indent)
+            @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+            @source_rewriter.insert_after(node.loc.expression, "\n#{line_indent(node)}")
+            trim_enclosing_spaces!(node)
           end
         end
+      end
+
+      def in_a_block_with_only_whitespace?(node)
+        return false unless node.parent && node.parent.block_type?
+        content_before = @content[node.parent.loc.begin.end_pos...node.loc.expression.begin_pos]
+        content_after = @content[node.loc.expression.end_pos...node.parent.loc.end.begin_pos]
+        content_before =~ /^\s*$/ && content_after =~ /^\s*$/
+      end
+
+      def trim_enclosing_spaces!(node)
+        before_range = Parser::Source::Range.new(@source_buffer, node.parent.loc.begin.end_pos, node.loc.expression.begin_pos)
+        after_range = Parser::Source::Range.new(@source_buffer, node.loc.expression.end_pos, node.parent.loc.end.begin_pos)
+        @source_rewriter.remove(before_range)
+        @source_rewriter.remove(after_range)
       end
 
       def looks_like_route_definition?(hash_node)

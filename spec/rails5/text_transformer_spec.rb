@@ -163,6 +163,19 @@ describe Rails5::SpecConverter::TextTransformer do
           end
         RUBY
       end
+
+      it 'adds more newlines and indentation if the invocation being transformed is not on its own line' do
+        result = transform(<<-RUBY.strip_heredoc, @options)
+          let(:perform_request) { get :index, my_params }
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          let(:perform_request) {
+            _inner, _outer = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            get :index, _outer.merge(params: _inner)
+          }
+        RUBY
+      end
     end
   end
 
