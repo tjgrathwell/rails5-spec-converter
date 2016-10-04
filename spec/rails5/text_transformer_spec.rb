@@ -500,7 +500,7 @@ describe Rails5::SpecConverter::TextTransformer do
         end
       end
 
-      it 'does not produce warnings for unambigous params' do
+      it 'does not produce warnings for unambiguous params' do
         unambiguous_example = <<-RUBY
           post :users, user: {name: 'bayleef'}
         RUBY
@@ -510,7 +510,7 @@ describe Rails5::SpecConverter::TextTransformer do
         }.not_to output.to_stdout
       end
 
-      it 'allows warnings to be produced if hash keys are ambigious because of method calls' do
+      it 'allows warnings to be produced if hash keys are ambiguous because of method calls' do
         ambiguous_method_call_example = <<-RUBY
           post :users, params
         RUBY
@@ -520,7 +520,7 @@ describe Rails5::SpecConverter::TextTransformer do
         }.to output(/ambiguous/i).to_stdout
       end
 
-      it 'allows warnings to be produced if hash keys are ambigious because of kwsplat' do
+      it 'allows warnings to be produced if hash keys are ambiguous because of kwsplat' do
         ambiguous_kwsplat_example = <<-RUBY
           post :users, **params, id: 5
         RUBY

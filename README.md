@@ -124,9 +124,9 @@ becomes
 post :users, params: {user: {name: 'bayleef'}}
 ```
 
-To force hashes to be written without extra whitespace in all files regardless of context, use the argument `--no-hash-spacing`.
+* `--no-hash-spacing` will force hashes to be written **without** extra whitespace in all files regardless of context.
 
-To force hashes to be written WITH extra whitespace in all files regardless of context, use the argument `--hash-spacing`.
+* `--hash-spacing` will force hashes to be written **with** extra whitespace in all files regardless of context.
 
 ## Development
 
@@ -136,6 +136,9 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/tjgrathwell/rails5-spec-converter. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](contributor-covenant.org) code of conduct.
 
+## Contact
+
+If this Gem helped you out at all, or it didn't help because you wanted it to do something different or it broke all your computer code, please let me know on twitter [@tjgrathwell](http://twitter.com/tjgrathwell)
 
 ## License
 

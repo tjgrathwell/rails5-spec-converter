@@ -32,8 +32,8 @@ module Rails5
             @options.strategy = strategy.to_sym
           end
 
-          opts.on("--warn-if-ambiguous", "Emit warnings when hash parameters are unknowable (see README)") do |warn_if_ambigous|
-            @options.warn_if_ambiguous = warn_if_ambigous
+          opts.on("--warn-if-ambiguous", "Emit warnings when hash parameters are unknowable (see README)") do |warn_if_ambiguous|
+            @options.warn_if_ambiguous = warn_if_ambiguous
           end
         end.parse!
 
