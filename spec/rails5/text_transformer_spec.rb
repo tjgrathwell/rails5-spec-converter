@@ -207,43 +207,71 @@ describe Rails5::SpecConverter::TextTransformer do
     RUBY
   end
 
-  describe 'header params' do
-    it 'assigns additional arguments as "headers"' do
-      result = transform(<<-RUBY.strip_heredoc)
-        get :index, {search: 'bayleef'}, {'X-PANCAKE' => 'banana'}
-      RUBY
-
-      expect(result).to eq(<<-RUBY.strip_heredoc)
-        get :index, params: {search: 'bayleef'}, headers: {'X-PANCAKE' => 'banana'}
-      RUBY
+  describe 'controller tests' do
+    let(:controllery_file_options) do
+      TextTransformerOptions.new.tap do |options|
+        options.file_path = 'spec/controllers/test_spec.rb'
+      end
     end
 
-    it 'adds "params" and "header" keys regardless of surrounding whitespace' do
-      result = transform(<<-RUBY.strip_heredoc)
-        get :index, {
-          search: 'bayleef'
-        }, {
-          'X-PANCAKE' => 'banana'
-        }
-      RUBY
+    describe 'session and flash params' do
+      it 'assigns additional positional arguments as "session" and "flash"' do
+        result = transform(<<-RUBY.strip_heredoc, controllery_file_options)
+          get :index, {search: 'bayleef'}, {'session_property' => 'banana'}, {info: 'Great Search!'}
+        RUBY
 
-      expect(result).to eq(<<-RUBY.strip_heredoc)
-        get :index, params: {
-          search: 'bayleef'
-        }, headers: {
-          'X-PANCAKE' => 'banana'
-        }
-      RUBY
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, params: {search: 'bayleef'}, session: {'session_property' => 'banana'}, flash: {info: 'Great Search!'}
+        RUBY
+      end
+    end
+  end
+
+  describe 'request tests' do
+    let(:requesty_file_options) do
+      TextTransformerOptions.new.tap do |options|
+        options.file_path = 'spec/requests/test_spec.rb'
+      end
     end
 
-    it 'wraps header args in curly braces if they are not already present' do
-      result = transform(<<-RUBY.strip_heredoc)
-        get :show, nil, 'X-BANANA' => 'pancake'
-      RUBY
+    describe 'header params' do
+      it 'assigns additional arguments as "headers"' do
+        result = transform(<<-RUBY.strip_heredoc, requesty_file_options)
+          get :index, {search: 'bayleef'}, {'X-PANCAKE' => 'banana'}
+        RUBY
 
-      expect(result).to eq(<<-RUBY.strip_heredoc)
-        get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
-      RUBY
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, params: {search: 'bayleef'}, headers: {'X-PANCAKE' => 'banana'}
+        RUBY
+      end
+
+      it 'adds "params" and "header" keys regardless of surrounding whitespace' do
+        result = transform(<<-RUBY.strip_heredoc, requesty_file_options)
+          get :index, {
+            search: 'bayleef'
+          }, {
+            'X-PANCAKE' => 'banana'
+          }
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, params: {
+            search: 'bayleef'
+          }, headers: {
+            'X-PANCAKE' => 'banana'
+          }
+        RUBY
+      end
+
+      it 'wraps header args in curly braces if they are not already present' do
+        result = transform(<<-RUBY.strip_heredoc, requesty_file_options)
+          get :show, nil, 'X-BANANA' => 'pancake'
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
+        RUBY
+      end
     end
   end
 
@@ -282,28 +310,36 @@ describe Rails5::SpecConverter::TextTransformer do
       RUBY
     end
 
-    it 'preserves hash indentation if the hash starts on a new line and a headers hash is present' do
-      result = transform(<<-RUBY.strip_heredoc)
-        post :create, {
-          color: 'blue',
-          size: {
-            width: 10
-          }
-        }, {
-          'header' => 'value'
-        }
-      RUBY
+    describe 'request tests' do
+      let(:requesty_file_options) do
+        TextTransformerOptions.new.tap do |options|
+          options.file_path = 'spec/requests/test_spec.rb'
+        end
+      end
 
-      expect(result).to eq(<<-RUBY.strip_heredoc)
-        post :create, params: {
-          color: 'blue',
-          size: {
-            width: 10
+      it 'preserves hash indentation if the hash starts on a new line and a headers hash is present' do
+        result = transform(<<-RUBY.strip_heredoc, requesty_file_options)
+          post :create, {
+            color: 'blue',
+            size: {
+              width: 10
+            }
+          }, {
+            'header' => 'value'
           }
-        }, headers: {
-          'header' => 'value'
-        }
-      RUBY
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          post :create, params: {
+            color: 'blue',
+            size: {
+              width: 10
+            }
+          }, headers: {
+            'header' => 'value'
+          }
+        RUBY
+      end
     end
 
     it 'indents hashes appropriately if they start on the same line as the action' do

@@ -1,5 +1,6 @@
 require 'parser/current'
 require 'astrolabe/builder'
+require 'rails5/spec_converter/test_type_identifier'
 require 'rails5/spec_converter/text_transformer_options'
 require 'rails5/spec_converter/hash_rewriter'
 
@@ -62,7 +63,7 @@ module Rails5
             handle_ambiguous_method_call!(node)
           end
 
-          wrap_arg(args[1], 'headers') if args[1]
+          wrap_extra_positional_args!(args) if args.length > 1
         end
 
         @source_rewriter.process
@@ -142,6 +143,16 @@ module Rails5
         hash_node.children.any? { |pair| pair.children[0].children[0] == key }
       end
 
+      def wrap_extra_positional_args!(args)
+        if test_type == :controller
+          wrap_arg(args[1], 'session') if args[1]
+          wrap_arg(args[2], 'flash') if args[2]
+        end
+        if test_type == :request
+          wrap_arg(args[1], 'headers') if args[1]
+        end
+      end
+
       def wrap_arg(node, key)
         node_loc = node.loc.expression
         node_source = node_loc.source
@@ -159,6 +170,10 @@ module Rails5
 
       def line_indent(node)
         node.loc.expression.source_line.match(/^(\s*)/)[1]
+      end
+
+      def test_type
+        @test_type ||= TestTypeIdentifier.new(@content, @options).test_type
       end
 
       def log(str)
