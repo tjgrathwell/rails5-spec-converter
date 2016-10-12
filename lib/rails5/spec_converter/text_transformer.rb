@@ -94,7 +94,7 @@ module Rails5
           ].join('.')
 
           text_before_node = node.loc.expression.source_line[0...node.loc.expression.column]
-          first_line_content = "_inner, _outer = #{partition_clause}"
+          first_line_content = "_outer, _inner = #{partition_clause}"
           if text_before_node =~ /^\s+$/
             @source_rewriter.insert_before(node.loc.expression, "#{first_line_content}\n#{line_indent(node)}")
             if args.length == 1
