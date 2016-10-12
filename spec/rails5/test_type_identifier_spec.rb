@@ -2,9 +2,9 @@ require 'spec_helper'
 
 describe Rails5::SpecConverter::TestTypeIdentifier do
   describe 'determining the type of a test file' do
-    def build_rspec_content(type = nil)
+    def build_rspec_content(metadata = nil)
       <<-EOT.strip_heredoc
-        describe "my test"#{type ? ", type: :#{type}" : nil} do
+        describe "my test"#{metadata ? ", #{metadata}" : nil} do
           it 'runs this test' do
             get :index
             expect(response).to be_success
@@ -72,20 +72,36 @@ describe Rails5::SpecConverter::TestTypeIdentifier do
         end
       end
 
-      it 'identifies files as "controller" if they have controller metadata' do
-        content = build_rspec_content('controller')
-        identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
-        expect(identifier.test_type).to eq(:controller)
+      context 'symbol metadata' do
+        it 'identifies files as "controller" if they have controller metadata' do
+          content = build_rspec_content('type: :controller')
+          identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
+          expect(identifier.test_type).to eq(:controller)
+        end
+
+        it 'identifies files as "request" if they have request metadata' do
+          content = build_rspec_content('type: :request')
+          identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
+          expect(identifier.test_type).to eq(:request)
+        end
       end
 
-      it 'identifies files as "request" if they have request metadata' do
-        content = build_rspec_content('request')
-        identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
-        expect(identifier.test_type).to eq(:request)
+      context 'string metadata' do
+        it 'identifies files as "controller" if they have controller metadata' do
+          content = build_rspec_content("type: 'controller'")
+          identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
+          expect(identifier.test_type).to eq(:controller)
+        end
+
+        it 'identifies files as "request" if they have request metadata' do
+          content = build_rspec_content("type: 'request'")
+          identifier = Rails5::SpecConverter::TestTypeIdentifier.new(content)
+          expect(identifier.test_type).to eq(:request)
+        end
       end
 
       it 'prefers request metadata to folder location when determining file type' do
-        content = build_rspec_content('request')
+        content = build_rspec_content('type: :request')
         options = TextTransformerOptions.new
         options.file_path = "project/spec/controllers/sample_spec.rb"
 

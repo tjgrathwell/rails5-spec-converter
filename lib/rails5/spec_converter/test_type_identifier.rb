@@ -69,10 +69,13 @@ module Rails5
         return nil unless params && params.hash_type?
 
         params.children.each do |node|
-          if node.pair_type? && node.children.all?(&:sym_type?)
-            key, value = node.children.map { |sym| sym.children.first }
-            return :controller if key == :type && value == :controller
-            return :request if key == :type && value == :request
+          if node.pair_type? && node.children.first.sym_type?
+            key_node, value_node = node.children
+            next unless key_node.children.first == :type
+
+            value_str = value_node.children.first.to_s
+            return :controller if value_str == 'controller'
+            return :request if value_str == 'request'
           end
         end
 
