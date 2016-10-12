@@ -407,6 +407,28 @@ describe Rails5::SpecConverter::TextTransformer do
       RUBY
     end
 
+    it 'indents hashes appropriately if they start on a new line and contain indented content' do
+      result = transform(<<-RUBY.strip_heredoc)
+        put :update,
+          id: @rubygem.to_param,
+          linkset: {
+            code: @url
+          },
+          format: :json
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        put :update,
+          params: {
+            id: @rubygem.to_param,
+            linkset: {
+              code: @url
+            }
+          },
+          format: :json
+      RUBY
+    end
+
     describe 'inconsistent hash spacing' do
       describe 'when a hash has inconsistent indentation' do
         it 'rewrites hashes as single-line if the first two pairs are on the same line' do

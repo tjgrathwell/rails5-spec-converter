@@ -138,11 +138,11 @@ class HashRewriter
     value_str_lines[1].match(/^(\s*)/)[1].sub(original_indent, '')
   end
 
-  def additional_indent(hash_node)
+  def should_indent_restrung_content?(hash_node)
     return nil if indent_before_first_pair(hash_node)
 
     joiner = first_joiner_between_pairs
-    joiner && joiner.include?("\n") ? @options.indent : nil
+    joiner && joiner.include?("\n")
   end
 
   def existing_indent(hash_node)
@@ -188,14 +188,18 @@ class HashRewriter
 
   def appropriately_indented_params_hash(pairs:)
     outer_indent = existing_indent(hash_node)
-    middle_indent = indent_of_first_value_if_multiline(hash_node)
-    inner_indent = additional_indent(hash_node)
 
     restrung_hash = restring_hash(
       pairs,
-      indent: outer_indent + (inner_indent || ''),
+      indent: outer_indent,
       joiner: ",\n"
     )
+
+    if should_indent_restrung_content?(hash_node)
+      restrung_hash = add_indent(restrung_hash, @options.indent)
+    end
+
+    middle_indent = indent_of_first_value_if_multiline(hash_node)
     if middle_indent
       restrung_hash = original_indent + add_indent(restrung_hash, middle_indent)
     end
