@@ -97,7 +97,17 @@ module Rails5
           first_line_content = "_inner, _outer = #{partition_clause}"
           if text_before_node =~ /^\s+$/
             @source_rewriter.insert_before(node.loc.expression, "#{first_line_content}\n#{line_indent(node)}")
-            @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+            if args.length == 1
+              @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
+            else
+              replacement_range = Parser::Source::Range.new(
+                @source_buffer,
+                args[0].loc.expression.begin_pos,
+                args[1].loc.expression.begin_pos
+              )
+              @source_rewriter.replace(replacement_range, '_outer.merge(params: _inner).merge(')
+              @source_rewriter.insert_after(args.last.loc.expression, ')')
+            end
           else
             return unless in_a_block_with_only_whitespace?(node)
 

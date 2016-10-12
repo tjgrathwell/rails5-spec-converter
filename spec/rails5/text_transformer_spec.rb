@@ -179,6 +179,22 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
       end
 
+      it 'merges additional session/headers/flash positional params onto the uglified hash' do
+        @options.file_path = request_spec_file_path
+        result = transform(<<-RUBY.strip_heredoc, @options)
+          let(:perform_request) do
+            get :index, my_params, {'X-HEADER-OPTION': 'bananas'}
+          end
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          let(:perform_request) do
+            _inner, _outer = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            get :index, _outer.merge(params: _inner).merge(headers: {'X-HEADER-OPTION': 'bananas'})
+          end
+        RUBY
+      end
+
       it 'adds more newlines and indentation if the invocation being transformed is not on its own line' do
         result = transform(<<-RUBY.strip_heredoc, @options)
           let(:perform_request) { get :index, my_params }
