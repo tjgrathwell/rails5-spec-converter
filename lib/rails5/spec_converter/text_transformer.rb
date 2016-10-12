@@ -58,6 +58,13 @@ module Rails5
                 hash_rewriter.rewritten_params_hash
               ) if hash_rewriter.should_rewrite_hash?
             end
+          elsif args[0].nil_type? && args.length > 1
+            nil_arg_range = Parser::Source::Range.new(
+              @source_buffer,
+              args[0].loc.expression.begin_pos,
+              args[1].loc.expression.begin_pos
+            )
+            @source_rewriter.remove(nil_arg_range)
           else
             warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
             handle_ambiguous_method_call!(node)

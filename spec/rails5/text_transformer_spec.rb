@@ -1,6 +1,9 @@
 require 'spec_helper'
 
 describe Rails5::SpecConverter::TextTransformer do
+  let(:controller_spec_file_path) { 'spec/controllers/test_spec.rb' }
+  let(:request_spec_file_path) { 'spec/requests/test_spec.rb' }
+
   def transform(text, options = nil)
     if options
       described_class.new(text, options).transform
@@ -149,7 +152,19 @@ describe Rails5::SpecConverter::TextTransformer do
         @options.strategy = :uglify
       end
 
-      it 'attempts to split the unkown arguments into two hashes' do
+      it 'removes the argument in the "parameters" position if it has a nil value' do
+        @options.file_path = request_spec_file_path
+        result = transform(<<-RUBY.strip_heredoc, @options)
+          get :index, nil, {'X-HEADER-OPTION' => 'bananas'}
+        RUBY
+
+        expect(result).to eq(<<-RUBY.strip_heredoc)
+          get :index, headers: {'X-HEADER-OPTION' => 'bananas'}
+        RUBY
+      end
+
+      it 'attempts to split the unknown arguments into two hashes' do
+        @options.file_path = request_spec_file_path
         result = transform(<<-RUBY.strip_heredoc, @options)
           let(:perform_request) do
             get :index, my_params
@@ -210,7 +225,7 @@ describe Rails5::SpecConverter::TextTransformer do
   describe 'controller tests' do
     let(:controllery_file_options) do
       TextTransformerOptions.new.tap do |options|
-        options.file_path = 'spec/controllers/test_spec.rb'
+        options.file_path = controller_spec_file_path
       end
     end
 
@@ -230,7 +245,7 @@ describe Rails5::SpecConverter::TextTransformer do
   describe 'request tests' do
     let(:requesty_file_options) do
       TextTransformerOptions.new.tap do |options|
-        options.file_path = 'spec/requests/test_spec.rb'
+        options.file_path = request_spec_file_path
       end
     end
 
@@ -269,7 +284,7 @@ describe Rails5::SpecConverter::TextTransformer do
         RUBY
 
         expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :show, params: nil, headers: { 'X-BANANA' => 'pancake' }
+          get :show, headers: { 'X-BANANA' => 'pancake' }
         RUBY
       end
     end
@@ -313,7 +328,7 @@ describe Rails5::SpecConverter::TextTransformer do
     describe 'request tests' do
       let(:requesty_file_options) do
         TextTransformerOptions.new.tap do |options|
-          options.file_path = 'spec/requests/test_spec.rb'
+          options.file_path = request_spec_file_path
         end
       end
 
