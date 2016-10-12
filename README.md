@@ -76,7 +76,7 @@ even though `format` should be **outside** the params hash.
     format: :json
   }
 
-  _inner, _outer = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+  _outer, _inner = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
   get :users, _outer.merge(params: _inner)
   ```
 
