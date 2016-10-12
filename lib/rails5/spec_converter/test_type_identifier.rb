@@ -36,6 +36,15 @@ module Rails5
 
       def test_type_from_content
         root_node = @parser.parse(@source_buffer)
+        root_node.each_node(:class) do |node|
+          class_const_node, superclass_const_node = node.children
+          next unless superclass_const_node && superclass_const_node.const_type?
+
+          superclass_str = superclass_const_node.loc.expression.source
+          return :controller if superclass_str == "ActionController::TestCase"
+          return :request if superclass_str == "ActionDispatch::IntegrationTest"
+        end
+
         root_node.each_node(:send) do |node|
           target, method, test_name, params = node.children
           next unless target.nil? || target == :RSpec
@@ -51,9 +60,9 @@ module Rails5
         return nil unless @options.file_path
 
         dirs = @options.file_path.split('/')
-        spec_folder_index = dirs.index('spec')
-        return nil unless spec_folder_index
-        DIRECTORY_TO_TYPE_MAP[dirs[spec_folder_index + 1]]
+        folder_index = dirs.index('spec') || dirs.index('test')
+        return nil unless folder_index
+        DIRECTORY_TO_TYPE_MAP[dirs[folder_index + 1]]
       end
 
       def type_from_params_hash(params)

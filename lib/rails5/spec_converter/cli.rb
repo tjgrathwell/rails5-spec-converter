@@ -41,7 +41,7 @@ module Rails5
       end
 
       def run
-        paths = @files.length > 0 ? @files : ["spec/**/*_spec.rb"]
+        paths = @files.length > 0 ? @files : ["spec/**/*_spec.rb", "test/**/*_test.rb"]
 
         paths.each do |path|
           Dir.glob(path) do |file_path|

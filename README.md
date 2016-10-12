@@ -1,4 +1,4 @@
-# Rails5::SpecConverter
+# Rails5 Spec Converter
 
 [![Build Status](https://travis-ci.org/tjgrathwell/rails5-spec-converter.svg?branch=master)](https://travis-ci.org/tjgrathwell/rails5-spec-converter)
 
@@ -33,7 +33,7 @@ Make sure you've committed everything to Git first, then
     $ cd some-project
     $ rails5-spec-converter
 
-This will update all the files in that directory matching the glob `spec/**/*_spec.rb`.
+This will update all the files in that directory matching the globs `spec/**/*_spec.rb` or `test/**/*_test.rb`.
 
 If you want to specify a specific set of files instead, you can run `rails5-spec-converter path_to_my_files`.
 
@@ -127,6 +127,10 @@ post :users, params: {user: {name: 'bayleef'}}
 * `--no-hash-spacing` will force hashes to be written **without** extra whitespace in all files regardless of context.
 
 * `--hash-spacing` will force hashes to be written **with** extra whitespace in all files regardless of context.
+
+## Compatibility
+
+It **should** work for both RSpec and MiniTest, but who really knows?
 
 ## Development
 
