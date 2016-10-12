@@ -86,7 +86,7 @@ module Rails5
         end
 
         if @options.uglify_ambiguous_params?
-          keys = (HashRewriter::ALLOWED_KWARG_KEYS - [:params]).join(' ')
+          keys = HashRewriter::OUTSIDE_PARAMS_KEYS.join(' ')
           partition_clause = [
             @textifier.node_to_string(args[0]),
             "partition { |k,v| %i{#{keys}}.include?(k) }",

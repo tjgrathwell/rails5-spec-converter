@@ -33,7 +33,7 @@ Make sure you've committed everything to Git first, then
     $ cd some-project
     $ rails5-spec-converter
 
-This will update all the files in that directory matching the glob `spec/**/*_spec.rb`. It should be idempotent.
+This will update all the files in that directory matching the glob `spec/**/*_spec.rb`.
 
 If you want to specify a specific set of files instead, you can run `rails5-spec-converter path_to_my_files`.
 
@@ -76,7 +76,7 @@ even though `format` should be **outside** the params hash.
     format: :json
   }
 
-  _outer, _inner = all_the_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+  _outer, _inner = all_the_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
   get :users, _outer.merge(params: _inner)
   ```
 

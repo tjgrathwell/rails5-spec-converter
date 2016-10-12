@@ -1,8 +1,7 @@
 require 'rails5/spec_converter/node_textifier'
 
 class HashRewriter
-  # technically format is special
-  ALLOWED_KWARG_KEYS = %i(params session flash method body xhr format)
+  OUTSIDE_PARAMS_KEYS = %i(format)
 
   attr_reader :hash_node, :original_indent
 
@@ -97,7 +96,7 @@ class HashRewriter
     hash_node.children.each do |pair|
       key = pair.children[0].children[0]
 
-      if ALLOWED_KWARG_KEYS.include?(key)
+      if OUTSIDE_PARAMS_KEYS.include?(key)
         @pairs_that_belong_outside_params << pair
       else
         @pairs_that_belong_in_params << pair

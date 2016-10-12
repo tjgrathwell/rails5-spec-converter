@@ -173,7 +173,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
         expect(result).to eq(<<-RUBY.strip_heredoc)
           let(:perform_request) do
-            _outer, _inner = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
             get :index, _outer.merge(params: _inner)
           end
         RUBY
@@ -189,7 +189,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
         expect(result).to eq(<<-RUBY.strip_heredoc)
           let(:perform_request) do
-            _outer, _inner = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
             get :index, _outer.merge(params: _inner).merge(headers: {'X-HEADER-OPTION': 'bananas'})
           end
         RUBY
@@ -202,7 +202,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
         expect(result).to eq(<<-RUBY.strip_heredoc)
           let(:perform_request) {
-            _outer, _inner = my_params.partition { |k,v| %i{session flash method body xhr format}.include?(k) }.map { |a| Hash[a] }
+            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
             get :index, _outer.merge(params: _inner)
           }
         RUBY
