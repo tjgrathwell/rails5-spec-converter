@@ -39,49 +39,6 @@ If you want to specify a specific set of files instead, you can run `rails5-spec
 
 By default it will make some noise, run with `rails5-spec-converter --quiet` if you want it not to.
 
-### Strategy
-
-`rails5-spec-converter` wants to partition your arguments into two sets, those that belong in `params` and those that don't.
-
-But it doesn't do any runtime analysis, so it can only effectively sort out non-`params` keys if they're included in a hash literal on the test invocation site. Hence:
-
-```
-all_the_params = {
-  search: 'bayleef',
-  format: :json
-}
-
-get :users, all_the_params
-```
-
-will become
-
-```
-get :users, params: all_the_params
-```
-
-even though `format` should be **outside** the params hash.
-
-* `--warn-if-ambiguous` will print a message every time `rails5-spec-converter` encounters this situation
-
-* `--strategy optimistic` (default) will always wrap the unknowable args in `params`
-
-* `--strategy skip` will never wrap the unknowable args in `params`
-
-* `--strategy uglify` will attempt to split the hash into `params` and non-`params` hashes at runtime, like so:
-
-  ```
-  all_the_params = {
-    search: 'bayleef',
-    format: :json
-  }
-
-  _outer, _inner = all_the_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
-  get :users, _outer.merge(params: _inner)
-  ```
-
-  This should allow your tests to pass without deprecation warnings while introducing an enticing code cleanup oppurtunity.
-
 ### Whitespace
 
 #### Indentation

@@ -71,143 +71,34 @@ describe Rails5::SpecConverter::TextTransformer do
     RUBY
   end
 
-  describe 'situations with unknown arguments' do
-    before do
-      @options = TextTransformerOptions.new
-      @options.strategy = :optimistic
-    end
+  it 'can add "params: {}" around hashes that contain a double-splat' do
+    result = transform(<<-RUBY.strip_heredoc)
+      get :index, **index_params, order: 'asc', format: :json
+    RUBY
 
-    describe '"optimistic" strategy' do
-      it 'can add "params: {}" if the first argument is a method call' do
-        result = transform(<<-RUBY.strip_heredoc)
-          get :index, my_params
-        RUBY
+    expect(result).to eq(<<-RUBY.strip_heredoc)
+      get :index, params: { **index_params, order: 'asc' }, format: :json
+    RUBY
+  end
 
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :index, params: my_params
-        RUBY
+  it 'can add "params: {}" around multiline hashes that contain a double-splat' do
+    result = transform(<<-RUBY.strip_heredoc)
+      let(:retrieve_index) do
+        get :index, order: 'asc',
+                    **index_params,
+                    format: :json
       end
+    RUBY
 
-      it 'can add "params: {}" around hashes that contain a double-splat' do
-        result = transform(<<-RUBY.strip_heredoc)
-          get :index, **index_params, order: 'asc', format: :json
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :index, params: { **index_params, order: 'asc' }, format: :json
-        RUBY
+    expect(result).to eq(<<-RUBY.strip_heredoc)
+      let(:retrieve_index) do
+        get :index, params: {
+                      order: 'asc',
+                      **index_params
+                    },
+                    format: :json
       end
-
-      it 'can add "params: {}" around multiline hashes that contain a double-splat' do
-        result = transform(<<-RUBY.strip_heredoc)
-          let(:retrieve_index) do
-            get :index, order: 'asc',
-                        **index_params,
-                        format: :json
-          end
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          let(:retrieve_index) do
-            get :index, params: {
-                          order: 'asc',
-                          **index_params
-                        },
-                        format: :json
-          end
-        RUBY
-      end
-    end
-
-    describe '"skip" strategy' do
-      before do
-        @options = TextTransformerOptions.new
-        @options.strategy = :skip
-      end
-
-      it 'does not add "params" if the first argument is a method call' do
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          get :index, my_params
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :index, my_params
-        RUBY
-      end
-
-      it 'does not add "params" if the first argument is a hash that contains a double-splat' do
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          get :index, **params, format: :json
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :index, **params, format: :json
-        RUBY
-      end
-    end
-
-    describe "'uglify' strategy" do
-      before do
-        @options = TextTransformerOptions.new
-        @options.strategy = :uglify
-      end
-
-      it 'removes the argument in the "parameters" position if it has a nil value' do
-        @options.file_path = request_spec_file_path
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          get :index, nil, {'X-HEADER-OPTION' => 'bananas'}
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          get :index, headers: {'X-HEADER-OPTION' => 'bananas'}
-        RUBY
-      end
-
-      it 'attempts to split the unknown arguments into two hashes' do
-        @options.file_path = request_spec_file_path
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          let(:perform_request) do
-            get :index, my_params
-          end
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          let(:perform_request) do
-            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
-            get :index, _outer.merge(params: _inner)
-          end
-        RUBY
-      end
-
-      it 'merges additional session/headers/flash positional params onto the uglified hash' do
-        @options.file_path = request_spec_file_path
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          let(:perform_request) do
-            get :index, my_params, {'X-HEADER-OPTION': 'bananas'}
-          end
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          let(:perform_request) do
-            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
-            get :index, _outer.merge(params: _inner).merge(headers: {'X-HEADER-OPTION': 'bananas'})
-          end
-        RUBY
-      end
-
-      it 'adds more newlines and indentation if the invocation being transformed is not on its own line' do
-        result = transform(<<-RUBY.strip_heredoc, @options)
-          let(:perform_request) { get :index, my_params }
-        RUBY
-
-        expect(result).to eq(<<-RUBY.strip_heredoc)
-          let(:perform_request) {
-            _outer, _inner = my_params.partition { |k,v| %i{format}.include?(k) }.map { |a| Hash[a] }
-            get :index, _outer.merge(params: _inner)
-          }
-        RUBY
-      end
-    end
+    RUBY
   end
 
   it 'can add "params: {}" when only unpermitted keys are present' do
@@ -579,44 +470,6 @@ describe Rails5::SpecConverter::TextTransformer do
         expect {
           transform(inconsistent_spacing_example)
         }.to output(/inconsistent/i).to_stdout
-      end
-    end
-
-    describe 'warning about ambiguous params' do
-      let(:options) do
-        TextTransformerOptions.new.tap do |o|
-          o.warn_if_ambiguous = true
-        end
-      end
-
-      it 'does not produce warnings for unambiguous params' do
-        unambiguous_example = <<-RUBY
-          post :users, user: {name: 'bayleef'}
-        RUBY
-
-        expect {
-          transform(unambiguous_example, options)
-        }.not_to output.to_stdout
-      end
-
-      it 'allows warnings to be produced if hash keys are ambiguous because of method calls' do
-        ambiguous_method_call_example = <<-RUBY
-          post :users, params
-        RUBY
-
-        expect {
-          transform(ambiguous_method_call_example, options)
-        }.to output(/ambiguous/i).to_stdout
-      end
-
-      it 'allows warnings to be produced if hash keys are ambiguous because of kwsplat' do
-        ambiguous_kwsplat_example = <<-RUBY
-          post :users, **params, id: 5
-        RUBY
-
-        expect {
-          transform(ambiguous_kwsplat_example, options)
-        }.to output(/ambiguous/i).to_stdout
       end
     end
   end

@@ -27,14 +27,6 @@ module Rails5
           opts.on("--[no-]hash-spacing", "Always/never add space around hashes ({foo: 'bar'} vs { foo: 'bar' })") do |hash_spacing|
             @options.hash_spacing = hash_spacing
           end
-
-          opts.on("-s", "--strategy STRATEGY", "Set unknown hash parameters strategy (see README)") do |strategy|
-            @options.strategy = strategy.to_sym
-          end
-
-          opts.on("--warn-if-ambiguous", "Emit warnings when hash parameters are unknowable (see README)") do |warn_if_ambiguous|
-            @options.warn_if_ambiguous = warn_if_ambiguous
-          end
         end.parse!
 
         @files = ARGV

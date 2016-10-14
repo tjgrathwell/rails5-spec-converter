@@ -1,5 +1,5 @@
 module Rails5
   module SpecConverter
-    VERSION = "1.0.22"
+    VERSION = "2.0.0"
   end
 end

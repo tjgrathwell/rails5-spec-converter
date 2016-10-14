@@ -41,10 +41,6 @@ module Rails5
             else
               next if looks_like_route_definition?(args[0])
               next if has_key?(args[0], :params)
-              if has_kwsplat?(args[0])
-                warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
-                next unless @options.wrap_ambiguous_params?
-              end
 
               hash_rewriter = HashRewriter.new(
                 content: @content,
@@ -66,8 +62,7 @@ module Rails5
             )
             @source_rewriter.remove(nil_arg_range)
           else
-            warn_about_ambiguous_params(node) if @options.warn_about_ambiguous_params?
-            handle_ambiguous_method_call!(node)
+            wrap_arg(args[0], 'params')
           end
 
           wrap_extra_positional_args!(args) if args.length > 1
@@ -77,62 +72,6 @@ module Rails5
       end
 
       private
-
-      def handle_ambiguous_method_call!(node)
-        target, verb, action, *args = node.children
-
-        if @options.wrap_ambiguous_params?
-          wrap_arg(args[0], 'params') if @options.wrap_ambiguous_params?
-        end
-
-        if @options.uglify_ambiguous_params?
-          keys = HashRewriter::OUTSIDE_PARAMS_KEYS.join(' ')
-          partition_clause = [
-            @textifier.node_to_string(args[0]),
-            "partition { |k,v| %i{#{keys}}.include?(k) }",
-            'map { |a| Hash[a] }'
-          ].join('.')
-
-          text_before_node = node.loc.expression.source_line[0...node.loc.expression.column]
-          first_line_content = "_outer, _inner = #{partition_clause}"
-          if text_before_node =~ /^\s+$/
-            @source_rewriter.insert_before(node.loc.expression, "#{first_line_content}\n#{line_indent(node)}")
-            if args.length == 1
-              @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
-            else
-              replacement_range = Parser::Source::Range.new(
-                @source_buffer,
-                args[0].loc.expression.begin_pos,
-                args[1].loc.expression.begin_pos
-              )
-              @source_rewriter.replace(replacement_range, '_outer.merge(params: _inner).merge(')
-              @source_rewriter.insert_after(args.last.loc.expression, ')')
-            end
-          else
-            return unless in_a_block_with_only_whitespace?(node)
-
-            new_indent = line_indent(node) + @options.indent
-            @source_rewriter.insert_before(node.loc.expression, "\n" + new_indent + first_line_content + "\n" + new_indent)
-            @source_rewriter.replace(args[0].loc.expression, '_outer.merge(params: _inner)')
-            @source_rewriter.insert_after(node.loc.expression, "\n#{line_indent(node)}")
-            trim_enclosing_spaces!(node)
-          end
-        end
-      end
-
-      def in_a_block_with_only_whitespace?(node)
-        return false unless node.parent && node.parent.block_type?
-        content_before = @content[node.parent.loc.begin.end_pos...node.loc.expression.begin_pos]
-        content_after = @content[node.loc.expression.end_pos...node.parent.loc.end.begin_pos]
-        content_before =~ /^\s*$/ && content_after =~ /^\s*$/
-      end
-
-      def trim_enclosing_spaces!(node)
-        before_range = Parser::Source::Range.new(@source_buffer, node.parent.loc.begin.end_pos, node.loc.expression.begin_pos)
-        after_range = Parser::Source::Range.new(@source_buffer, node.loc.expression.end_pos, node.parent.loc.end.begin_pos)
-        @source_rewriter.remove(before_range)
-        @source_rewriter.remove(after_range)
-      end
 
       def looks_like_route_definition?(hash_node)
         keys = hash_node.children.map { |pair| pair.children[0].children[0] }
@@ -177,12 +116,6 @@ module Rails5
           node_source = "{ #{node_source} }"
         end
         @source_rewriter.replace(node_loc, "#{key}: #{node_source}")
-      end
-
-      def warn_about_ambiguous_params(node)
-        log "Ambiguous params found"
-        log "#{@options.file_path}:#{node.loc.line}" if @options.file_path
-        log "```\n#{node.loc.expression.source}\n```\n\n"
       end
 
       def line_indent(node)
