@@ -1,0 +1,7 @@
+version: '2'
+services:
+  rb:
+    build: .
+    command: sh
+    volumes:
+      - ./:/usr/src/app/:cached
