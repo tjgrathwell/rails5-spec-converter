@@ -390,6 +390,30 @@ describe Rails5::SpecConverter::TextTransformer do
         end
       RUBY
     end
+
+    it 'adds a comma between the params hash and the format key' do
+      result = transform(<<-RUBY.strip_heredoc)
+        let(:perform_request) do
+          post :show, {
+            branch_name: 'new_design3',
+            ref: 'foo',
+            format: :json
+          }
+        end
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        let(:perform_request) do
+          post :show, {
+            params: {
+              branch_name: 'new_design3',
+              ref: 'foo'
+            },
+            format: :json
+          }
+        end
+      RUBY
+    end
   end
 
   describe 'things that look like route definitions' do

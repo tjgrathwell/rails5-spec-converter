@@ -32,14 +32,13 @@ class HashRewriter
         joiner: ",\n"
       )
 
-      optional_comma = has_trailing_comma?(hash_node) ? ',' : ''
       new_wrapped_hash_content = wrap_and_indent(
         "{",
         "}",
         [
           wrap_and_indent(
             "params: {",
-            "}#{optional_comma}",
+            "},",
             params_hash,
             @options.indent
           ),
