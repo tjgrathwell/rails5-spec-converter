@@ -45,7 +45,7 @@ describe Rails5::SpecConverter::TextTransformer do
 
   it 'leaves invocations with only permitted keys undisturbed' do
     test_content = <<-RUBY
-      get :index, format: :json
+      get :index, format: :json, xhr: true
     RUBY
     expect(transform(test_content)).to eq(test_content)
   end
@@ -73,11 +73,11 @@ describe Rails5::SpecConverter::TextTransformer do
 
   it 'can add "params: {}" around hashes that contain a double-splat' do
     result = transform(<<-RUBY.strip_heredoc)
-      get :index, **index_params, order: 'asc', format: :json
+      get :index, **index_params, order: 'asc', format: :json, xhr: true
     RUBY
 
     expect(result).to eq(<<-RUBY.strip_heredoc)
-      get :index, params: { **index_params, order: 'asc' }, format: :json
+      get :index, params: { **index_params, order: 'asc' }, format: :json, xhr: true
     RUBY
   end
 
@@ -86,7 +86,8 @@ describe Rails5::SpecConverter::TextTransformer do
       let(:retrieve_index) do
         get :index, order: 'asc',
                     **index_params,
-                    format: :json
+                    format: :json,
+                    xhr: true
       end
     RUBY
 
@@ -96,7 +97,8 @@ describe Rails5::SpecConverter::TextTransformer do
                       order: 'asc',
                       **index_params
                     },
-                    format: :json
+                    format: :json,
+                    xhr: true
       end
     RUBY
   end
@@ -118,13 +120,13 @@ describe Rails5::SpecConverter::TextTransformer do
   it 'can add "params: {}" when both permitted and unpermitted keys are present' do
     result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
-        get :index, search: 'bayleef', format: :json
+        get :index, search: 'bayleef', format: :json, xhr: true
       end
     RUBY
 
     expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
-        get :index, params: { search: 'bayleef' }, format: :json
+        get :index, params: { search: 'bayleef' }, format: :json, xhr: true
       end
     RUBY
   end
@@ -200,13 +202,13 @@ describe Rails5::SpecConverter::TextTransformer do
   it 'keeps hashes tightly packed if the existing source has any tightly-packed hashes in it' do
     result = transform(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
-        get :index, {search: 'bayleef', format: :json}
+        get :index, {search: 'bayleef', format: :json, xhr: true}
       end
     RUBY
 
     expect(result).to eq(<<-RUBY.strip_heredoc)
       it 'executes the controller action' do
-        get :index, params: {search: 'bayleef'}, format: :json
+        get :index, params: {search: 'bayleef'}, format: :json, xhr: true
       end
     RUBY
   end
@@ -268,7 +270,8 @@ describe Rails5::SpecConverter::TextTransformer do
       result = transform(<<-RUBY.strip_heredoc)
         post :show, branch_name: 'new_design3',
                     ref: 'foo',
-                    format: :json
+                    format: :json,
+                    xhr: true
       RUBY
 
       expect(result).to eq(<<-RUBY.strip_heredoc)
@@ -276,7 +279,8 @@ describe Rails5::SpecConverter::TextTransformer do
                       branch_name: 'new_design3',
                       ref: 'foo'
                     },
-                    format: :json
+                    format: :json,
+                    xhr: true
       RUBY
     end
 
@@ -285,7 +289,8 @@ describe Rails5::SpecConverter::TextTransformer do
         post :show,
              branch_name: 'new_design3',
              ref: 'foo',
-             format: :json
+             format: :json,
+             xhr: true
       RUBY
 
       expect(result).to eq(<<-RUBY.strip_heredoc)
@@ -294,7 +299,8 @@ describe Rails5::SpecConverter::TextTransformer do
                branch_name: 'new_design3',
                ref: 'foo'
              },
-             format: :json
+             format: :json,
+             xhr: true
       RUBY
     end
 
@@ -305,7 +311,8 @@ describe Rails5::SpecConverter::TextTransformer do
           linkset: {
             code: @url
           },
-          format: :json
+          format: :json,
+          xhr: true
       RUBY
 
       expect(result).to eq(<<-RUBY.strip_heredoc)
@@ -316,7 +323,8 @@ describe Rails5::SpecConverter::TextTransformer do
               code: @url
             }
           },
-          format: :json
+          format: :json,
+          xhr: true
       RUBY
     end
 
@@ -374,6 +382,7 @@ describe Rails5::SpecConverter::TextTransformer do
             branch_name: 'new_design3',
             ref: 'foo',
             format: :json,
+            xhr: true,
           }
         end
       RUBY
@@ -386,6 +395,7 @@ describe Rails5::SpecConverter::TextTransformer do
               ref: 'foo',
             },
             format: :json,
+            xhr: true,
           }
         end
       RUBY
