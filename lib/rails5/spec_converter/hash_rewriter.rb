@@ -1,7 +1,7 @@
 require 'rails5/spec_converter/node_textifier'
 
 class HashRewriter
-  OUTSIDE_PARAMS_KEYS = %i(format headers)
+  OUTSIDE_PARAMS_KEYS = %i(format headers xhr)
 
   attr_reader :hash_node, :original_indent
 
