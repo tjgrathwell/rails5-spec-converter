@@ -194,6 +194,18 @@ describe Rails5::SpecConverter::TextTransformer do
           get :show, headers: { 'X-BANANA' => 'pancake' }
         RUBY
       end
+
+      describe 'when the :headers key is present' do
+        it 'does not wrap :headers within :params' do
+          result = transform(<<-RUBY.strip_heredoc)
+            get :show, id: 10, headers: { 'X-BANANA' => 'pancake' }
+          RUBY
+
+          expect(result).to eq(<<-RUBY.strip_heredoc)
+            get :show, params: { id: 10 }, headers: { 'X-BANANA' => 'pancake' }
+          RUBY
+        end
+      end
     end
   end
 
