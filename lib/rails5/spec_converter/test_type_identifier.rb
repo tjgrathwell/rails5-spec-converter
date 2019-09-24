@@ -21,7 +21,7 @@ module Rails5
         ast_builder = Astrolabe::Builder.new
         @parser = Parser::CurrentRuby.new(ast_builder)
 
-        @source_rewriter = Parser::Source::Rewriter.new(@source_buffer)
+        @source_rewriter = Parser::Source::TreeRewriter.new(@source_buffer)
       end
 
       def test_type
