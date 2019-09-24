@@ -194,6 +194,17 @@ describe Rails5::SpecConverter::TextTransformer do
           get :show, headers: { 'X-BANANA' => 'pancake' }
         RUBY
       end
+      describe 'when the :headers key is present' do
+        it 'does not wrap it within :params' do
+          result = transform(<<-RUBY.strip_heredoc)
+            get :show, id: 10, headers: { 'X-BANANA' => 'pancake' }
+          RUBY
+
+          expect(result).to eq(<<-RUBY.strip_heredoc)
+            get :show, params: { id: 10 }, headers: { 'X-BANANA' => 'pancake' }
+          RUBY
+        end
+      end
     end
   end
 
@@ -386,6 +397,29 @@ describe Rails5::SpecConverter::TextTransformer do
               ref: 'foo',
             },
             format: :json,
+          }
+        end
+      RUBY
+    end
+    it 'adds a comma between the params hash and the format key' do
+      result = transform(<<-RUBY.strip_heredoc)
+        let(:perform_request) do
+          post :show, {
+            branch_name: 'new_design3',
+            ref: 'foo',
+            format: :json
+          }
+        end
+      RUBY
+
+      expect(result).to eq(<<-RUBY.strip_heredoc)
+        let(:perform_request) do
+          post :show, {
+            params: {
+              branch_name: 'new_design3',
+              ref: 'foo'
+            },
+            format: :json
           }
         end
       RUBY
