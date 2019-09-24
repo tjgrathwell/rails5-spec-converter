@@ -1,7 +1,7 @@
 require 'rails5/spec_converter/node_textifier'
 
 class HashRewriter
-  OUTSIDE_PARAMS_KEYS = %i(format)
+  OUTSIDE_PARAMS_KEYS = %i(format xhr headers)
 
   attr_reader :hash_node, :original_indent
 
@@ -21,6 +21,7 @@ class HashRewriter
 
     warn_if_inconsistent_indentation
 
+
     if multiline? && should_wrap_rewritten_hash_in_curly_braces?
       params_hash = restring_hash(
         @pairs_that_belong_in_params,
@@ -32,14 +33,13 @@ class HashRewriter
         joiner: ",\n"
       )
 
-      optional_comma = has_trailing_comma?(hash_node) ? ',' : ''
       new_wrapped_hash_content = wrap_and_indent(
         "{",
         "}",
         [
           wrap_and_indent(
             "params: {",
-            "}#{optional_comma}",
+            "},",
             params_hash,
             @options.indent
           ),
@@ -256,4 +256,9 @@ class HashRewriter
 
     puts str
   end
+
+  def transform_format(params)
+    log params
+  end
+
 end
